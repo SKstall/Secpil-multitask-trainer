@@ -1,0 +1,1614 @@
+<title>Test Multitâche Pilote</title>
+<meta name="description" content="Entraînement psychomoteur multitâche configurable (type SECPIL) : suivi ∞, palonnier, réaction F1–F4 au HOTAS, calcul mental. Mode campagne progressif, historique des scores, note /20 détaillée.">
+<link rel="icon" type="image/svg+xml" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 40 40'%3E%3Ccircle cx='20' cy='20' r='19' fill='%23f4f2ec'/%3E%3Ccircle cx='20' cy='20' r='15.3' fill='none' stroke='%230f766e' stroke-width='2.6'/%3E%3Cpath d='M20 4 V10.8 M20 29.2 V36 M4 20 H10.8 M29.2 20 H36' stroke='%230f766e' stroke-width='2.6' stroke-linecap='round'/%3E%3Ccircle cx='20' cy='20' r='3.9' fill='%230f766e'/%3E%3C/svg%3E">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Chakra+Petch:wght@500;600;700&family=IBM+Plex+Mono:wght@400;500;600&family=IBM+Plex+Sans:wght@400;500;600&display=swap">
+
+<style>
+  :root{
+    --ground:#f4f2ec;--panel:#fbfaf7;--panel-2:#ece9e0;--ink:#1b2530;--ink-dim:#5c6a77;
+    --line:#d9d4c7;--accent:#0f766e;--accent-soft:#0f766e2e;--warn:#b7791f;--alert:#c22d31;--go:#1c8a5b;
+    --shadow:0 1px 2px rgba(20,25,35,.09),0 10px 30px rgba(20,25,35,.07);
+    --font-display:"Chakra Petch",system-ui,sans-serif;
+    --font-body:"IBM Plex Sans",system-ui,sans-serif;
+    --font-mono:"IBM Plex Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  }
+  @media (prefers-color-scheme:dark){
+    :root:not([data-theme="light"]){
+      --ground:#090c10;--panel:#111820;--panel-2:#19222c;--ink:#e7edf2;--ink-dim:#8b98a4;
+      --line:#26313b;--accent:#49d7c4;--accent-soft:#49d7c433;--warn:#e7b552;--alert:#ff5a5f;--go:#57d9a3;
+      --shadow:0 0 0 1px rgba(255,255,255,.02),0 16px 44px rgba(0,0,0,.55);
+    }
+  }
+  :root[data-theme="dark"]{
+    --ground:#090c10;--panel:#111820;--panel-2:#19222c;--ink:#e7edf2;--ink-dim:#8b98a4;
+    --line:#26313b;--accent:#49d7c4;--accent-soft:#49d7c433;--warn:#e7b552;--alert:#ff5a5f;--go:#57d9a3;
+    --shadow:0 0 0 1px rgba(255,255,255,.02),0 16px 44px rgba(0,0,0,.55);
+  }
+  *{box-sizing:border-box}
+  html,body{height:100%}
+  body{margin:0;background:var(--ground);color:var(--ink);font-family:var(--font-body);font-size:14px;line-height:1.5;-webkit-font-smoothing:antialiased}
+  .app{min-height:100dvh;display:flex;flex-direction:column;gap:10px;padding:14px;max-width:1180px;margin:0 auto}
+
+  .topbar{display:flex;align-items:baseline;justify-content:space-between;gap:16px;flex-wrap:wrap}
+  .brandrow{display:flex;align-items:center;gap:10px}
+  .logo{width:32px;height:32px;flex:none}
+  .brandwrap{display:flex;flex-direction:column;gap:1px}
+  .eyebrow{font-family:var(--font-display);font-weight:600;font-size:10.5px;letter-spacing:.22em;text-transform:uppercase;color:var(--accent)}
+  .brand{font-family:var(--font-display);font-weight:700;font-size:19px;letter-spacing:.02em}
+  .clockwrap{display:flex;align-items:center;gap:12px}
+  .themesw{display:inline-flex;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+  .themesw button{font-size:13px;padding:5px 8px;background:transparent;border:0;cursor:pointer;line-height:1;border-right:1px solid var(--line);filter:grayscale(1);opacity:.55}
+  .themesw button:last-child{border-right:0}
+  .themesw button[aria-pressed="true"]{background:var(--accent-soft);filter:none;opacity:1}
+  .themesw button:focus-visible{outline:2px solid var(--accent);outline-offset:-2px}
+  .stagepill{font-family:var(--font-display);font-size:10px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim)}
+  .clock{font-family:var(--font-mono);font-weight:600;font-size:22px;font-variant-numeric:tabular-nums;letter-spacing:.04em}
+  .btn{font-family:var(--font-display);font-weight:600;font-size:12.5px;letter-spacing:.09em;text-transform:uppercase;cursor:pointer;border:1px solid var(--accent);background:var(--accent);color:var(--ground);border-radius:7px;padding:9px 16px;transition:filter .12s,transform .04s}
+  .btn:hover{filter:brightness(1.08)}
+  .btn:active{transform:translateY(1px)}
+  .btn.ghost{background:transparent;color:var(--accent)}
+  .btn.mini{padding:5px 10px;font-size:10.5px}
+  .btn:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .grid{flex:1;display:grid;grid-template-columns:296px 1fr;gap:10px;min-height:clamp(420px,60vh,640px)}
+  .grid.solo{grid-template-columns:1fr}
+  .col{display:flex;flex-direction:column;gap:10px;min-height:0}
+  .card{background:var(--panel);border:1px solid var(--line);border-radius:10px;box-shadow:var(--shadow)}
+  .card h2{margin:0;padding:9px 12px;border-bottom:1px solid var(--line);font-family:var(--font-display);font-weight:600;font-size:10.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim);display:flex;justify-content:space-between;align-items:center}
+  .card h2 .tag{color:var(--accent);letter-spacing:.14em}
+
+  .reaction .keys{display:grid;grid-template-columns:1fr 1fr;gap:8px;padding:12px}
+  .fkey{aspect-ratio:5/3;border:1px solid var(--line);border-radius:8px;background:var(--panel-2);color:var(--ink-dim);font-family:var(--font-display);font-weight:700;font-size:clamp(20px,3.4vw,30px);letter-spacing:.06em;display:grid;place-items:center;cursor:pointer;user-select:none;transition:background .07s,color .07s,box-shadow .07s,border-color .07s}
+  .fkey.live{background:var(--alert);color:#fff;border-color:var(--alert);box-shadow:0 0 0 1px var(--alert),0 0 22px color-mix(in srgb,var(--alert) 55%,transparent)}
+  .fkey.hit{background:var(--go);color:#052a1d;border-color:var(--go)}
+  .fkey:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+
+  .math{flex:1;display:flex;flex-direction:column;min-height:0}
+  .math .body{padding:12px;display:flex;flex-direction:column;gap:9px;flex:1;justify-content:center}
+  .prob{font-family:var(--font-mono);font-weight:600;font-size:clamp(22px,4vw,30px);letter-spacing:.02em;text-align:center;font-variant-numeric:tabular-nums}
+  .answer{font-family:var(--font-mono);font-size:20px;text-align:center;border:1px solid var(--line);border-radius:7px;background:var(--panel-2);padding:8px 10px;min-height:40px;display:flex;align-items:center;justify-content:center;gap:1px}
+  .answer.ok{border-color:var(--go);color:var(--go)}
+  .answer.no{border-color:var(--alert);color:var(--alert)}
+  .caret{width:2px;height:20px;background:var(--accent);display:inline-block}
+  .mhint{font-family:var(--font-mono);font-size:11.5px;color:var(--accent);text-align:center;background:var(--accent-soft);border-radius:6px;padding:5px 8px;line-height:1.4}
+  .numsbody{padding:14px 12px;display:flex;flex-direction:column;align-items:center;gap:10px;text-align:center}
+  .numsicon{font-size:30px;opacity:.35;transition:opacity .15s,transform .15s}
+  .numsicon.ping{opacity:1;transform:scale(1.25)}
+  .mbar{height:4px;border-radius:2px;background:var(--panel-2);overflow:hidden}
+  .mbar i{display:block;height:100%;background:var(--warn);width:100%}
+  .hint{font-size:11px;color:var(--ink-dim);text-align:center}
+  .hint b{color:var(--ink);font-weight:600}
+
+  .track{position:relative;display:flex;border:1px solid var(--line);border-radius:10px;overflow:hidden;background:var(--panel);box-shadow:var(--shadow);min-height:320px}
+  .track.sideH{flex-direction:column}
+  .side{width:92px;flex:none;border-right:1px solid var(--line);position:relative}
+  .track.sideH .side{width:100%;height:92px;border-right:0;border-bottom:1px solid var(--line)}
+  .track.mainOff .side{width:100%;height:100%;border:0}
+  .side canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+  .side .slbl{position:absolute;left:0;right:0;bottom:6px;text-align:center;font-family:var(--font-display);font-size:8.5px;letter-spacing:.14em;text-transform:uppercase;color:var(--ink-dim);pointer-events:none}
+  .side .sval{position:absolute;left:0;right:0;top:8px;text-align:center;font-family:var(--font-mono);font-size:15px;font-weight:600;pointer-events:none}
+  .main{flex:1;position:relative}
+  .main canvas{position:absolute;inset:0;width:100%;height:100%;display:block;touch-action:none}
+  .hud{position:absolute;top:10px;left:12px;font-family:var(--font-mono);font-variant-numeric:tabular-nums;pointer-events:none}
+  .hud .big{font-size:26px;font-weight:600;line-height:1}
+  .hud .lbl{font-family:var(--font-display);font-size:9.5px;letter-spacing:.2em;text-transform:uppercase;color:var(--ink-dim)}
+  .lock{position:absolute;top:10px;right:12px;font-family:var(--font-display);font-size:10px;letter-spacing:.16em;text-transform:uppercase;color:var(--go);pointer-events:none;opacity:0;transition:opacity .2s}
+  .lock.on{opacity:1}
+  .numsFlash{position:absolute;top:50%;transform:translateY(-50%) scale(.85);width:92px;height:92px;border-radius:50%;
+    display:flex;align-items:center;justify-content:center;font-family:var(--font-mono);font-weight:700;font-size:44px;
+    background:var(--panel);border:2px solid var(--accent);color:var(--accent);box-shadow:var(--shadow);
+    pointer-events:none;opacity:0;transition:opacity .15s,transform .15s}
+  .numsFlash[data-pos="left"]{left:16px}
+  .numsFlash[data-pos="right"]{right:16px}
+  .numsFlash.show{opacity:1;transform:translateY(-50%) scale(1)}
+
+  .statsbar{display:flex;gap:10px;flex-wrap:wrap;background:var(--panel);border:1px solid var(--line);border-radius:10px;padding:10px 14px;box-shadow:var(--shadow)}
+  .stat{display:flex;flex-direction:column;gap:1px;min-width:84px}
+  .stat[hidden]{display:none}
+  .stat .k{font-family:var(--font-display);font-size:9px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim)}
+  .stat .v{font-family:var(--font-mono);font-weight:600;font-size:16px;font-variant-numeric:tabular-nums}
+  .stat .v small{font-size:11px;color:var(--ink-dim);font-weight:400}
+
+  .overlay{position:fixed;inset:0;background:var(--ground);display:grid;place-items:center;padding:18px;z-index:20}
+  .sheet{width:min(620px,100%);max-height:calc(100dvh - 36px);overflow:auto;background:var(--panel);border:1px solid var(--line);border-radius:14px;box-shadow:var(--shadow);padding:20px}
+  .sheet h1{font-family:var(--font-display);font-weight:700;font-size:23px;margin:0 0 2px;letter-spacing:.01em;text-wrap:balance}
+  .sheet .sub{color:var(--ink-dim);margin:0 0 14px;font-size:12.5px}
+
+  .sec{border:1px solid var(--line);border-radius:9px;padding:12px;margin-bottom:10px;background:var(--panel-2)}
+  .sec > .subh{font-family:var(--font-display);font-size:10px;letter-spacing:.18em;text-transform:uppercase;color:var(--accent);margin:0 0 9px;display:flex;justify-content:space-between;align-items:center;gap:8px}
+  .row{display:flex;align-items:center;gap:8px;flex-wrap:wrap;margin-top:8px}
+  .row:first-of-type{margin-top:0}
+  .row > .k{font-family:var(--font-display);font-size:10px;letter-spacing:.13em;text-transform:uppercase;color:var(--ink-dim);min-width:88px}
+  .seg{display:inline-flex;flex-wrap:wrap;border:1px solid var(--line);border-radius:7px;overflow:hidden;background:var(--panel)}
+  .seg button{font-family:var(--font-mono);font-size:11.5px;padding:5px 10px;background:transparent;color:var(--ink-dim);border:0;cursor:pointer;border-right:1px solid var(--line)}
+  .seg button:last-child{border-right:0}
+  .seg button[aria-pressed="true"]{background:var(--accent);color:var(--ground);font-weight:600}
+  select,input[type=text]{font-family:var(--font-mono);font-size:12px;padding:5px 7px;border:1px solid var(--line);border-radius:6px;background:var(--panel);color:var(--ink)}
+  .minilbl{font-family:var(--font-mono);font-size:11px;color:var(--ink-dim);display:flex;align-items:center;gap:4px}
+  .minilbl.warn{color:var(--alert);font-weight:600}
+  .toggle{font-family:var(--font-mono);font-size:11px;padding:4px 10px;border:1px solid var(--line);border-radius:999px;background:var(--panel);color:var(--ink-dim);cursor:pointer}
+  .toggle[aria-pressed="true"]{background:var(--go);border-color:var(--go);color:#04241a;font-weight:600}
+  .axes{display:grid;grid-template-columns:repeat(4,1fr);gap:5px 10px;width:100%;margin-top:8px}
+  .axm{display:flex;flex-direction:column;gap:3px}
+  .axm .al{font-family:var(--font-mono);font-size:10px;color:var(--ink-dim);display:flex;justify-content:space-between}
+  .axtrack{height:6px;background:var(--panel);border:1px solid var(--line);border-radius:3px;position:relative;overflow:hidden}
+  .axfill{position:absolute;top:0;bottom:0;left:50%;width:0;background:var(--accent)}
+  .btnlights{display:flex;flex-wrap:wrap;gap:4px;width:100%;margin-top:8px}
+  .blight{width:20px;height:20px;border-radius:4px;border:1px solid var(--line);background:var(--panel);font-family:var(--font-mono);font-size:9px;display:grid;place-items:center;color:var(--ink-dim)}
+  .blight.on{background:var(--accent);color:var(--ground);border-color:var(--accent)}
+  .fslots{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;width:100%;margin-top:8px}
+  .fslot{font-family:var(--font-mono);font-size:11px;padding:7px 4px;border:1px solid var(--line);border-radius:7px;background:var(--panel);color:var(--ink);cursor:pointer;text-align:center;line-height:1.35}
+  .fslot b{display:block;color:var(--accent);font-size:10px;margin-top:2px}
+  .fslot.listening{border-color:var(--warn);box-shadow:0 0 0 1px var(--warn)}
+  .fslot.hot{border-color:var(--go);background:color-mix(in srgb,var(--go) 16%,var(--panel))}
+  .note{font-size:11px;color:var(--ink-dim);margin:8px 0 0}
+  .note b{color:var(--ink)}
+
+  .hist{display:flex;flex-direction:column;gap:0;margin-top:6px;font-family:var(--font-mono);font-size:11.5px}
+  .hist .hrow{display:grid;grid-template-columns:78px 1fr auto;gap:8px;align-items:center;padding:5px 0;border-top:1px solid var(--line)}
+  .hist .hrow:first-child{border-top:0}
+  .hist .hdate{color:var(--ink-dim);font-size:10.5px}
+  .hist .hlabel{color:var(--ink);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .hist .hnote{font-weight:600}
+  .spark{width:100%;height:44px;display:block;margin-top:8px}
+  .campaign-list{width:100%;border-collapse:collapse;font-size:12px;margin-top:4px}
+  .campaign-list td{padding:6px 8px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-variant-numeric:tabular-nums}
+  .campaign-list td:first-child{font-family:var(--font-body)}
+  .campaign-list tr.done td:first-child{color:var(--go)}
+  .campaign-list tr.cur td{background:var(--accent-soft)}
+
+  .rgrid{display:flex;flex-direction:column;gap:12px;margin:14px 0}
+  .idx{display:flex;align-items:baseline;gap:12px;flex-wrap:wrap}
+  .idx .num{font-family:var(--font-mono);font-weight:600;font-size:52px;line-height:1;font-variant-numeric:tabular-nums}
+  .idx .of{color:var(--ink-dim);font-family:var(--font-mono)}
+  .warnbox{color:var(--alert);font-family:var(--font-display);font-weight:600;font-size:11.5px;letter-spacing:.03em;background:color-mix(in srgb,var(--alert) 12%,transparent);border:1px solid var(--alert);border-radius:8px;padding:9px 11px;margin:10px 0 0}
+  #countdown{background:color-mix(in srgb,var(--ground) 22%,transparent)}
+  .cdlabel{font-family:var(--font-display);font-weight:600;font-size:12px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink);text-shadow:0 1px 10px var(--ground),0 0 22px var(--ground);margin-bottom:6px}
+  .cdnum{font-family:var(--font-mono);font-weight:700;font-size:96px;line-height:1;color:var(--accent);font-variant-numeric:tabular-nums;text-shadow:0 2px 20px var(--ground),0 0 36px var(--ground)}
+  @media (prefers-reduced-motion:no-preference){ .cdnum.pulse{animation:cdpulse .5s ease-out} }
+  @keyframes cdpulse{from{transform:scale(1.35);opacity:.25}to{transform:scale(1);opacity:1}}
+  .numsanswer{font-family:var(--font-mono);font-size:32px;text-align:center;width:100%;padding:12px;border:1px solid var(--line);border-radius:9px;background:var(--panel-2);color:var(--ink);font-variant-numeric:tabular-nums;margin:14px 0}
+  .numsanswer:focus{outline:2px solid var(--accent);outline-offset:1px}
+  .rtable{width:100%;border-collapse:collapse;font-size:12.5px}
+  .rtable th{text-align:left;font-family:var(--font-display);font-weight:600;font-size:9.5px;letter-spacing:.16em;text-transform:uppercase;color:var(--ink-dim);padding:7px 8px;border-bottom:1px solid var(--line)}
+  .rtable td{padding:8px;border-bottom:1px solid var(--line);font-family:var(--font-mono);font-variant-numeric:tabular-nums;vertical-align:top}
+  .rtable td:first-child{font-family:var(--font-body);white-space:nowrap}
+  .rtable td .d{display:block;color:var(--ink-dim);font-size:11px;margin-top:2px}
+  .rbar{height:5px;border-radius:3px;background:var(--panel-2);overflow:hidden;margin-top:5px;min-width:70px}
+  .rbar i{display:block;height:100%;background:var(--accent)}
+
+  [hidden]{display:none!important}
+  @media (prefers-reduced-motion:reduce){*{animation-duration:.001ms!important;transition-duration:.001ms!important}}
+  @media (max-width:760px){.grid{grid-template-columns:1fr}.track{min-height:56vh}.app{min-height:auto}}
+</style>
+
+<div class="app">
+  <header class="topbar">
+    <div class="brandrow">
+      <svg class="logo" viewBox="0 0 40 40" aria-hidden="true">
+        <circle cx="20" cy="20" r="16.5" fill="none" stroke="var(--accent)" stroke-width="2"/>
+        <path d="M20 2.5 V10 M20 30 V37.5 M2.5 20 H10 M30 20 H37.5" stroke="var(--accent)" stroke-width="2" stroke-linecap="round"/>
+        <circle cx="20" cy="20" r="3.4" fill="var(--accent)"/>
+      </svg>
+      <div class="brandwrap">
+        <span class="eyebrow">Entraînement psychomoteur · type SECPIL</span>
+        <span class="brand">Test Multitâche Pilote</span>
+      </div>
+    </div>
+    <div class="clockwrap">
+      <div class="themesw" id="themeSw" role="group" aria-label="Thème">
+        <button data-th="system" aria-pressed="true" title="Système">🖥️</button>
+        <button data-th="light" aria-pressed="false" title="Clair">☀️</button>
+        <button data-th="dark" aria-pressed="false" title="Sombre">🌙</button>
+      </div>
+      <span class="stagepill" id="stagePill" hidden></span>
+      <span class="clock" id="clock">00:00</span>
+      <button class="btn ghost mini" id="stopBtn" hidden>Arrêter</button>
+    </div>
+  </header>
+
+  <div class="grid" id="grid">
+    <div class="col" id="leftCol">
+      <section class="card reaction" id="reactionCard">
+        <h2>Réaction <span class="tag" id="rTag">0 / 0</span></h2>
+        <div class="keys" id="keys">
+          <div class="fkey" data-i="0" role="button" tabindex="0">F1</div>
+          <div class="fkey" data-i="1" role="button" tabindex="0">F2</div>
+          <div class="fkey" data-i="2" role="button" tabindex="0">F3</div>
+          <div class="fkey" data-i="3" role="button" tabindex="0">F4</div>
+        </div>
+      </section>
+      <section class="card math" id="mathCard">
+        <h2>Calcul mental <span class="tag" id="mTag">0 ✓ / 0 ✗</span></h2>
+        <div class="body">
+          <div class="prob" id="prob">7 + 6 × 4</div>
+          <div class="answer" id="answer"><span class="caret"></span></div>
+          <div class="mhint" id="mhint" hidden></div>
+          <div class="mbar" id="mbarWrap" hidden><i id="mbar"></i></div>
+          <div class="hint">Tape le résultat — validation auto · <b>× ÷</b> avant <b>+ −</b></div>
+        </div>
+      </section>
+      <section class="card nums" id="numsCard">
+        <h2>Mémoire (nombres) <span class="tag" id="numsTag">0 entendu</span></h2>
+        <div class="numsbody">
+          <div class="numsicon" id="numsIcon">🔊</div>
+          <div class="hint" id="numsHint">Un nombre entre 1 et 9 apparaît à intervalle régulier. Retiens leur <b>somme</b> — elle te sera demandée à la fin.</div>
+        </div>
+      </section>
+    </div>
+
+    <section class="track" id="track">
+      <div class="side" id="side" hidden>
+        <canvas id="cvSide"></canvas>
+        <div class="sval" id="sideBig">—</div>
+        <div class="slbl">Palonnier</div>
+      </div>
+      <div class="main">
+        <canvas id="cv"></canvas>
+        <div class="hud"><div class="big" id="accBig">—</div><div class="lbl">Précision suivi</div></div>
+        <div class="lock" id="lock">● Cible tenue</div>
+        <div class="numsFlash" id="numsFlash" data-pos="right" hidden></div>
+      </div>
+    </section>
+  </div>
+
+  <div class="statsbar" id="statsbar">
+    <div class="stat" id="stOnW"><span class="k">Temps sur cible</span><span class="v" id="sOn">0<small>%</small></span></div>
+    <div class="stat" id="stErrW"><span class="k">Erreur moyenne</span><span class="v" id="sErr">0<small> px</small></span></div>
+    <div class="stat" id="sSideWrap" hidden><span class="k">Palonnier · sur cible</span><span class="v" id="sSide">0<small>%</small></span></div>
+    <div class="stat" id="sHitW"><span class="k">Réaction · bons</span><span class="v" id="sHit">0</span></div>
+    <div class="stat" id="sMissW"><span class="k">Réaction · ratés</span><span class="v" id="sMiss">0</span></div>
+    <div class="stat" id="sRtW"><span class="k">Temps réaction</span><span class="v" id="sRt">—</span></div>
+    <div class="stat" id="sMathW"><span class="k">Calculs justes</span><span class="v" id="sMath">0</span></div>
+    <div class="stat" id="sNumsW" hidden><span class="k">Nombres entendus</span><span class="v" id="sNums">0</span></div>
+  </div>
+</div>
+
+<!-- BRIEFING -->
+<div class="overlay" id="briefing">
+  <div class="sheet">
+    <h1>Test Multitâche Pilote</h1>
+    <p class="sub">Entraînement psychomoteur multitâche façon SECPIL (EOPN). Réglages mémorisés, historique des scores conservé, note /20 détaillée.</p>
+
+    <div class="sec">
+      <p class="subh">Mode</p>
+      <div class="row">
+        <span class="k">Type</span>
+        <div class="seg" id="modeSeg" role="group">
+          <button data-x="free" aria-pressed="true">Séance libre</button>
+          <button data-x="campaign">Campagne</button>
+          <button data-x="exam">Examen</button>
+        </div>
+      </div>
+      <div class="row" id="freeDurRow">
+        <span class="k">Durée</span>
+        <div class="seg" id="durSeg" role="group">
+          <button data-d="60">1 min</button>
+          <button data-d="120" aria-pressed="true">2 min</button>
+          <button data-d="180">3 min</button>
+          <button data-d="300">5 min</button>
+          <button data-d="600">10 min</button>
+        </div>
+      </div>
+      <div class="row" id="freeTaskRow">
+        <span class="k">Tâches</span>
+        <button class="toggle" id="tgTrack" aria-pressed="true">Suivi ∞</button>
+        <button class="toggle" id="tgReact" aria-pressed="true">Réaction</button>
+        <button class="toggle" id="tgMath" aria-pressed="true">Calcul</button>
+        <button class="toggle" id="tgSide" aria-pressed="false">Palonnier</button>
+        <button class="toggle" id="tgNums" aria-pressed="false">Nombres</button>
+        <span class="minilbl" id="taskGuardMsg">au moins une tâche doit rester active</span>
+      </div>
+      <div class="row" id="campDurRow" hidden>
+        <span class="k">Durée / étape</span>
+        <div class="seg" id="stageDurSeg" role="group">
+          <button data-d="30">30 s</button>
+          <button data-d="45" aria-pressed="true">45 s</button>
+          <button data-d="60">1 min</button>
+          <button data-d="90">1 min 30</button>
+        </div>
+      </div>
+      <p class="note" id="campNote" hidden>La campagne enchaîne 12 étapes : d'abord le <b>suivi seul</b>, puis on ajoute une tâche, on la retire, on en met une autre… jusqu'à <b>tout ensemble</b>. Un score par étape + un bilan final avec ta courbe de progression.</p>
+      <div class="sec" id="examSec" hidden style="margin:8px 0 0;background:var(--panel)">
+        <p class="subh">Format examen</p>
+        <p class="note" style="margin:0">Reprend le format réel du SECPIL, autant que les infos publiques le permettent : <b>suivi ∞ (manche) + palonnier + réaction F1–F4 + calcul mental + mémoire de nombres, tous en même temps</b>, pendant <b>20 minutes</b>, épreuve unique, <b>sans aucune assistance</b> et <b>sans aucun réglage modifiable</b> — c'est le principe même d'un examen (durée officielle et structure en phases confirmées par plusieurs sites de préparation EOPN ; le barème officiel et le rythme exact des chiffres ne sont pas publics, un rythme fixe de 3 s a été retenu comme estimation). Au vrai SECPIL, les chiffres de 1 à 9 s'additionnent en cumul annoncé à voix haute à chaque chiffre ; ce module ne reproduit que la mémorisation finale, affichée à l'écran, saisie à la fin.</p>
+      </div>
+    </div>
+
+    <div class="sec" id="trackSec">
+      <p class="subh">Suivi principal ∞</p>
+      <div class="row" id="orientRow">
+        <span class="k">Orientation</span>
+        <div class="seg" id="orientSeg" role="group"><button data-o="h" aria-pressed="true">Horizontal</button><button data-o="v">Vertical</button></div>
+      </div>
+      <div class="row" id="spdRow">
+        <span class="k">Vitesse</span>
+        <div class="seg" id="spdSeg" role="group"><button data-s="0.1">Ultra lente</button><button data-s="0.19">Très lente</button><button data-s="0.3" aria-pressed="true">Lente</button><button data-s="0.5">Moyenne</button><button data-s="0.8">Rapide</button><button data-s="1.15">Très rapide</button></div>
+      </div>
+      <div class="row" id="motRow">
+        <span class="k">Mouvement</span>
+        <div class="seg" id="motSeg" role="group"><button data-m="loop" aria-pressed="true">Boucle ∞</button><button data-m="random">Aléatoire</button></div>
+      </div>
+      <div class="row">
+        <span class="k">Contrôle</span>
+        <div class="seg" id="ctrlSeg" role="group"><button data-c="key" aria-pressed="true">Clavier</button><button data-c="mouse">Souris</button><button data-c="pad">Manette</button></div>
+      </div>
+      <div class="row">
+        <span class="k">Sensibilité</span>
+        <div class="seg" id="sensSeg" role="group"><button data-s="0.4">Très basse</button><button data-s="0.65">Basse</button><button data-s="1" aria-pressed="true">Normale</button><button data-s="1.5">Haute</button><button data-s="2.2">Très haute</button></div>
+      </div>
+      <div class="row" id="padRow" hidden>
+        <span class="k">Manche</span>
+        <select id="gpSel"><option value="">— aucune —</option></select>
+        <span class="minilbl">X <select id="axX"></select></span><label class="minilbl"><input type="checkbox" id="invX"> inv</label>
+        <span class="minilbl">Y <select id="axY"></select></span><label class="minilbl"><input type="checkbox" id="invY"> inv</label>
+      </div>
+      <div class="row" id="assistTrackRow">
+        <span class="k">Assistance visée</span>
+        <button class="toggle" id="tgAssistTrack" aria-pressed="false">Désactivée</button>
+        <span class="minilbl">aide légère, active seulement pendant que tu bouges le manche</span>
+      </div>
+    </div>
+
+    <div class="sec" id="sideSec">
+      <p class="subh">Suivi palonnier</p>
+      <div class="row" id="sideOrientRow">
+        <span class="k">Orientation</span>
+        <div class="seg" id="sideOrientSeg" role="group"><button data-o="v" aria-pressed="true">Vertical</button><button data-o="h">Horizontal</button></div>
+      </div>
+      <div class="row" id="sideSpdRow">
+        <span class="k">Vitesse</span>
+        <div class="seg" id="sideSpdSeg" role="group"><button data-s="0.04">Ultra lente</button><button data-s="0.07">Très lente</button><button data-s="0.1" aria-pressed="true">Lente</button><button data-s="0.17">Moyenne</button><button data-s="0.26">Rapide</button></div>
+      </div>
+      <div class="row" id="sideMotRow">
+        <span class="k">Mouvement</span>
+        <div class="seg" id="sideMotSeg" role="group"><button data-m="sine" aria-pressed="true">Balancier</button><button data-m="random">Aléatoire</button></div>
+      </div>
+      <div class="row">
+        <span class="k">Sensibilité</span>
+        <div class="seg" id="sideSensSeg" role="group"><button data-s="0.4">Très basse</button><button data-s="0.65">Basse</button><button data-s="1" aria-pressed="true">Normale</button><button data-s="1.5">Haute</button><button data-s="2.2">Très haute</button></div>
+      </div>
+      <div class="row">
+        <span class="k">Pédales</span>
+        <select id="gpSide"><option value="">— aucune —</option></select>
+        <span class="minilbl">axe <select id="axSide"></select></span>
+        <button class="btn ghost mini" id="axSideDetect">Détecter</button>
+        <label class="minilbl"><input type="checkbox" id="axSideInv"> inverser</label>
+      </div>
+      <div class="row"><span class="k"></span><span class="minilbl" id="axSideStatus">choisis l'axe des pédales (ou « Détecter »)</span></div>
+      <div class="row" id="assistSideRow">
+        <span class="k">Assistance visée</span>
+        <button class="toggle" id="tgAssistSide" aria-pressed="false">Désactivée</button>
+        <span class="minilbl">aide légère, active seulement pendant que tu bouges les pédales</span>
+      </div>
+    </div>
+
+    <div class="sec" id="reactSec">
+      <p class="subh">Réaction F1–F4</p>
+      <div class="row" id="reactRateRow">
+        <span class="k">Cadence</span>
+        <div class="seg" id="rateSeg" role="group"><button data-r="6.5">Très lente</button><button data-r="4.2">Lente</button><button data-r="2.8" aria-pressed="true">Moyenne</button><button data-r="1.7">Rapide</button></div>
+      </div>
+      <div class="row" id="reactWinRow">
+        <span class="k">Délai réponse</span>
+        <div class="seg" id="winSeg" role="group"><button data-w="3">3 s</button><button data-w="2" aria-pressed="true">2 s</button><button data-w="1.2">1,2 s</button></div>
+      </div>
+      <div class="row">
+        <span class="k">Au HOTAS</span>
+        <div class="fslots" id="fslots">
+          <button class="fslot" data-f="0">F1<b>—</b></button><button class="fslot" data-f="1">F2<b>—</b></button>
+          <button class="fslot" data-f="2">F3<b>—</b></button><button class="fslot" data-f="3">F4<b>—</b></button>
+        </div>
+      </div>
+      <p class="note">Clique une case <b>F1…F4</b> puis actionne le bouton / la direction de croix voulu. La case passe au <b>vert</b> quand ce contrôle est actionné.</p>
+      <div class="row" id="assistAudioRow">
+        <span class="k">Annonce vocale</span>
+        <button class="toggle" id="tgAssistAudio" aria-pressed="false">Désactivée</button>
+        <span class="minilbl">une voix dit « F1 », « F2 »… quand la case s'allume</span>
+      </div>
+    </div>
+
+    <div class="sec" id="mathSec">
+      <p class="subh">Calcul mental</p>
+      <div class="row" id="mathSegRow">
+        <span class="k">Renouvellement</span>
+        <div class="seg" id="mathSeg" role="group"><button data-t="20">20 s</button><button data-t="12" aria-pressed="true">12 s</button><button data-t="7">7 s</button><button data-t="0">Jamais</button></div>
+      </div>
+      <div class="row" id="assistMathRow">
+        <span class="k">Aide logique</span>
+        <button class="toggle" id="tgAssistMath" aria-pressed="false">Désactivée</button>
+        <span class="minilbl">affiche sous l'opération quel calcul faire en premier</span>
+      </div>
+      <p class="note" id="assistNote">Validation <b>automatique</b> dès que la réponse est juste. La note récompense le <b>débit</b> de bonnes réponses : faux −0,4 · délai dépassé −0,7. Les assistances ci-dessus et ci-dessous sont réservées à la <b>séance libre</b> (désactivées en campagne) et signalées dans le bilan.</p>
+    </div>
+
+    <div class="sec" id="numsSec">
+      <p class="subh">Mémoire (nombres)</p>
+      <div class="row" id="numsModeRow">
+        <span class="k">Mode</span>
+        <div class="seg" id="numsModeSeg" role="group"><button data-m="voice" aria-pressed="true">Vocal</button><button data-m="visual">Visuel</button><button data-m="both">Les deux</button></div>
+      </div>
+      <div class="row" id="numsPosRow">
+        <span class="k">Position à l'écran</span>
+        <div class="seg" id="numsPosSeg" role="group"><button data-p="left">Gauche</button><button data-p="right" aria-pressed="true">Droite</button></div>
+      </div>
+      <div class="row" id="numsSpdRow">
+        <span class="k">Vitesse</span>
+        <div class="seg" id="numsSpdSeg" role="group"><button data-r="5">Très lente</button><button data-r="4">Lente</button><button data-r="3" aria-pressed="true">Moyenne</button><button data-r="2">Rapide</button><button data-r="1">Très rapide</button></div>
+      </div>
+      <div class="row" id="assistNumsRow">
+        <span class="k">Répétition (vocal)</span>
+        <button class="toggle" id="tgAssistNums" aria-pressed="false">Désactivée</button>
+        <span class="minilbl">répète chaque nombre 2× avec 2 s d'écart</span>
+      </div>
+      <p class="note">Un nombre entre 1 et 9 apparaît à intervalle régulier (affiché/lu pendant la durée choisie, puis autant de temps vide avant le suivant) — le rythme exact du SECPIL réel n'est pas publié, celui-ci est une estimation d'entraînement. À la fin de la séance, il faudra taper la <b>somme</b> de tous les nombres — <i>au vrai SECPIL le cumul s'annonce à voix haute à chaque chiffre, seul le résultat final est saisi au clavier ; ce module ne reproduit que la mémorisation, pas l'annonce vocale intermédiaire.</i></p>
+    </div>
+
+    <div class="sec" id="padPreviewSec" hidden>
+      <p class="subh">Manette — contrôle en direct</p>
+      <div class="axes" id="axView"></div>
+      <div class="btnlights" id="btnView"></div>
+    </div>
+
+    <div class="sec" id="histSec" hidden>
+      <p class="subh">Historique des scores <span><button class="btn ghost mini" id="histClear">Vider</button></span></p>
+      <svg class="spark" id="histSpark" viewBox="0 0 240 44" preserveAspectRatio="none" aria-hidden="true"></svg>
+      <div class="hist" id="histList"></div>
+    </div>
+
+    <button class="btn" id="startBtn" style="width:100%;padding:12px">Démarrer la séance</button>
+  </div>
+</div>
+
+<!-- STAGE RESULT (campaign, between stages) -->
+<div class="overlay" id="stageResult" hidden>
+  <div class="sheet">
+    <h1 id="stageTitle">Étape 1 / 8</h1>
+    <p class="sub" id="stageSub"></p>
+    <div class="idx"><span class="num" id="stageNote">0</span><span class="of">/ 20 · <span id="stageMention">—</span></span></div>
+    <p class="warnbox" id="stageAssistWarn" hidden></p>
+    <table class="rtable" style="margin-top:12px"><tbody id="stageBody"></tbody></table>
+    <div style="display:flex;gap:8px;margin-top:16px">
+      <button class="btn ghost" id="stageRetry" style="padding:12px">Réessayer l'étape</button>
+      <button class="btn" id="stageNext" style="flex:1;padding:12px">Étape suivante</button>
+    </div>
+    <button class="btn ghost" id="stageQuit" style="width:100%;padding:12px;margin-top:8px">Arrêter la campagne</button>
+  </div>
+</div>
+
+<!-- COUNTDOWN (before any run or stage) -->
+<div class="overlay" id="countdown" hidden>
+  <div style="text-align:center">
+    <div class="cdlabel" id="cdLabel"></div>
+    <div class="cdnum" id="cdNum">3</div>
+  </div>
+</div>
+
+<!-- SOMME DES NOMBRES (avant le bilan, si la tâche mémoire était active) -->
+<div class="overlay" id="numsPrompt" hidden>
+  <div class="sheet">
+    <h1>Mémoire (nombres)</h1>
+    <p class="sub">Des nombres sont passés. Quelle est leur <b>somme</b> ?</p>
+    <input type="number" inputmode="numeric" min="0" class="numsanswer" id="numsInputEl" placeholder="0" autofocus>
+    <button class="btn" id="numsSubmit" style="width:100%;padding:12px">Valider et voir le bilan</button>
+  </div>
+</div>
+
+<!-- RESULTS (free run OR campaign summary) -->
+<div class="overlay" id="results" hidden>
+  <div class="sheet">
+    <h1 id="resTitle">Bilan de séance</h1>
+    <p class="sub" id="resSub">120 s</p>
+    <div class="rgrid">
+      <div class="idx"><span class="num" id="resIndex">0</span><span class="of">/ 20 · <span id="resMention">—</span></span></div>
+      <p class="warnbox" id="resAssistWarn" hidden></p>
+      <p class="note" id="resProg"></p>
+      <svg class="spark" id="resSpark" viewBox="0 0 240 44" preserveAspectRatio="none" hidden></svg>
+      <table class="rtable"><thead><tr><th>Tâche</th><th>Détail</th><th>Score</th></tr></thead><tbody id="resBody"></tbody></table>
+      <p class="note" id="resWeights"></p>
+    </div>
+    <button class="btn" id="againBtn" style="width:100%;padding:12px">Retour au menu</button>
+  </div>
+</div>
+
+<script>
+(function(){
+  "use strict";
+  var $=function(s){return document.querySelector(s);};
+  var $$=function(s){return [].slice.call(document.querySelectorAll(s));};
+  var cv=$("#cv"),ctx=cv.getContext("2d"),cvS=$("#cvSide"),ctxS=cvS.getContext("2d");
+  var track=$("#track"),sideEl=$("#side");
+  var elClock=$("#clock"),elStop=$("#stopBtn"),elStagePill=$("#stagePill");
+  var elAccBig=$("#accBig"),elLock=$("#lock"),elSideBig=$("#sideBig");
+  var elProb=$("#prob"),elAns=$("#answer"),elMbarWrap=$("#mbarWrap"),elMbar=$("#mbar"),elMhint=$("#mhint");
+  var fkeys=$$(".fkey");
+  var sOn=$("#sOn"),sErr=$("#sErr"),sSide=$("#sSide"),sHit=$("#sHit"),sMiss=$("#sMiss"),sRt=$("#sRt"),sMath=$("#sMath"),sNums=$("#sNums");
+  var rTag=$("#rTag"),mTag=$("#mTag"),briefing=$("#briefing"),results=$("#results"),stageResult=$("#stageResult");
+  var numsPrompt=$("#numsPrompt"),numsIcon=$("#numsIcon"),numsTag=$("#numsTag"),numsFlash=$("#numsFlash"),numsHint=$("#numsHint");
+  var reduce=matchMedia("(prefers-reduced-motion:reduce)").matches;
+
+  var DEFAULT={
+    duration:120,
+    main:{on:true,orient:"h",speed:0.3,motion:"loop",control:"key",gp:null,axX:0,axY:1,invX:false,invY:false,sens:1},
+    side:{on:false,orient:"v",speed:0.1,motion:"sine",gp:null,axis:3,inv:false,sens:1},
+    react:{on:true,rate:2.8,win:2},
+    math:{on:true,timeout:12},
+    nums:{on:false,rate:3,mode:"voice",pos:"right"},
+    fkeys:[null,null,null,null],
+    stageDur:45,
+    assist:{track:false,side:false,audio:false,math:false,nums:false}
+  };
+  var cfg=JSON.parse(JSON.stringify(DEFAULT));
+  var runMode="free";
+
+  // A=suivi ∞ · B=palonnier · C=réaction · D=calcul · E=mémoire auditive (nombres)
+  var CAMPAIGN=[
+    {name:"Le suivi seul",                tasks:["A"]},
+    {name:"Suivi + Réaction",             tasks:["A","C"]},
+    {name:"Suivi + Calcul",               tasks:["A","D"]},
+    {name:"Suivi + Palonnier",            tasks:["A","B"]},
+    {name:"Suivi + Nombres",              tasks:["A","E"]},
+    {name:"Suivi + Réaction + Calcul",    tasks:["A","C","D"]},
+    {name:"Suivi + Palonnier + Réaction", tasks:["A","B","C"]},
+    {name:"Suivi + Palonnier + Calcul",   tasks:["A","B","D"]},
+    {name:"Suivi + Nombres + Réaction",   tasks:["A","E","C"]},
+    {name:"Suivi + Nombres + Calcul",     tasks:["A","E","D"]},
+    {name:"Suivi + Nombres + Palonnier",  tasks:["A","E","B"]},
+    {name:"Tout ensemble",                tasks:["A","B","C","D","E"]}
+  ];
+  var camp={active:false,stage:0,scores:[],isRetry:false};
+
+  // Force les "règles du jeu" à leurs valeurs de référence pour l'examen et la campagne,
+  // sans toucher aux réglages matériels (manche, pédales, sensibilité, assignation HOTAS),
+  // qui restent ceux que la personne a réglés pour son propre équipement.
+  function lockExamSettings(){
+    cfg.main.orient=DEFAULT.main.orient; cfg.main.speed=DEFAULT.main.speed; cfg.main.motion=DEFAULT.main.motion;
+    cfg.side.orient=DEFAULT.side.orient; cfg.side.speed=DEFAULT.side.speed; cfg.side.motion=DEFAULT.side.motion;
+    cfg.react.rate=DEFAULT.react.rate; cfg.react.win=DEFAULT.react.win;
+    cfg.math.timeout=DEFAULT.math.timeout;
+    cfg.nums.mode="visual"; cfg.nums.pos=DEFAULT.nums.pos; cfg.nums.rate=DEFAULT.nums.rate;
+    cfg.assist={track:false,side:false,audio:false,math:false,nums:false};
+  }
+
+  var LS_LAST="tmp_last_v2", LS_HIST="tmp_hist_v1", LS_THEME="tmp_theme_v1";
+  function loadStore(k){ try{ return JSON.parse(localStorage.getItem(k)||"null"); }catch(e){ return null; } }
+  function saveStore(k,v){ try{ localStorage.setItem(k,JSON.stringify(v)); }catch(e){} }
+
+  // ---------- thème : système / clair / sombre ----------
+  function setTheme(mode){
+    if(mode==="system") document.documentElement.removeAttribute("data-theme");
+    else document.documentElement.setAttribute("data-theme",mode);
+    $$("#themeSw button").forEach(function(b){ b.setAttribute("aria-pressed", b.dataset.th===mode?"true":"false"); });
+    saveStore(LS_THEME,mode);
+  }
+  $$("#themeSw button").forEach(function(b){ b.addEventListener("click",function(){ setTheme(b.dataset.th); }); });
+  function deepMerge(b,o){
+    var out=JSON.parse(JSON.stringify(b));
+    if(o&&typeof o==="object") Object.keys(o).forEach(function(k){
+      if(o[k]&&typeof o[k]==="object"&&!Array.isArray(o[k])&&out[k]) out[k]=deepMerge(out[k],o[k]); else out[k]=o[k];
+    });
+    return out;
+  }
+
+  // ---------- state ----------
+  var running=false,tStart=0,elapsed=0,lastNow=0,raf=0,curDur=120;
+  var act={track:true,side:false,react:true,math:true,nums:false};
+  var W=0,H=0,cx=0,cy=0,scale=1,SW=0,SH=0;
+  var pathT=0,target={x:0,y:0},reticle={x:0,y:0},held={};
+  var TOL=26,tk_frames=0,tk_on=0,tk_errSum=0,tk_errN=0,tk_onH=[0,0],tk_frH=[0,0],tk_near=0;
+  var rndPrev={x:0,y:0},rndWay={x:0,y:0},rndT=0,rndDur=2;
+  var sideTarget=0,sideRet=0,TOL_S=0.12,sd_frames=0,sd_on=0,sd_errSum=0,sd_errN=0,sd_onH=[0,0],sd_frH=[0,0],sd_near=0;
+  var rHitH=[0,0],rEvtH=[0,0],mNetH=[0,0];
+  var sPrev=0,sWay=0,sT=0,sDur=2;
+  var react={idx:-1,tStim:0,next:1.8,hits:0,miss:0,wrong:0,falarm:0,rtSum:0,rts:[]};
+  var math={answer:0,buf:"",correct:0,attempts:0,wrongAns:0,timeouts:0,tShown:0,locked:false,streak:0,best:0,hint:""};
+  var nums={sum:0,count:0,given:null,next:0};
+  var gamePrev={},fListen=null,sideDetect={active:false,rest:[],gp:null};
+  var mainIdleT=0, sideIdleT=0;
+  var numsPendingContinue=null;
+
+  // ---------- sizing ----------
+  function fit(){
+    var dpr=Math.min(window.devicePixelRatio||1,2);
+    var r=$(".main").getBoundingClientRect();
+    cv.width=Math.max(1,Math.round(r.width*dpr));cv.height=Math.max(1,Math.round(r.height*dpr));
+    ctx.setTransform(dpr,0,0,dpr,0,0);
+    W=r.width;H=r.height;cx=W/2;cy=H/2;scale=Math.min(W,H)*0.36;
+    var rs=sideEl.getBoundingClientRect();
+    cvS.width=Math.max(1,Math.round(rs.width*dpr));cvS.height=Math.max(1,Math.round(rs.height*dpr));
+    ctxS.setTransform(dpr,0,0,dpr,0,0);SW=rs.width;SH=rs.height;
+  }
+  window.addEventListener("resize",fit);
+  if(window.ResizeObserver) new ResizeObserver(fit).observe(track);
+
+  function lem(t){
+    var s=Math.sin(t),c=Math.cos(t),d=1+s*s, ox=scale*c/d, oy=scale*s*c/d;
+    if(cfg.main.orient==="v") return {x:cx+oy*1.9,y:cy+ox};
+    return {x:cx+ox,y:cy+oy*1.9};
+  }
+
+  // ---------- math ----------
+  function ri(a,b){return a+Math.floor(Math.random()*(b-a+1));}
+  function evalPrec(n,o){
+    n=n.slice();o=o.slice();
+    for(var i=0;i<o.length;){ if(o[i]==="×"||o[i]==="÷"){ var v=o[i]==="×"?n[i]*n[i+1]:n[i]/n[i+1]; n.splice(i,2,v);o.splice(i,1);} else i++; }
+    var a=n[0]; for(var k=0;k<o.length;k++) a=o[k]==="+"?a+n[k+1]:a-n[k+1];
+    return a;
+  }
+  function newProblem(){
+    var n,o,ans,g=0;
+    do{ g++;
+      if(Math.random()<0.4){
+        var op=["+","−","×"][ri(0,2)];
+        if(op==="×") n=[ri(2,9),ri(2,9)];
+        else if(op==="−"){ var x1=ri(8,29),x2=ri(2,x1-1); n=[x1,x2]; }
+        else n=[ri(6,29),ri(2,19)];
+        o=[op];
+      } else {
+        var a=ri(2,12),b=ri(2,9),c=ri(2,9),p=ri(0,3);
+        if(p===0){n=[a,b,c];o=["+","×"];}
+        else if(p===1){n=[a,b,c];o=["×","+"];}
+        else if(p===2){n=[a*b,b,c];o=["÷","+"];}
+        else{ n=[b*c+ri(2,25),b,c]; o=["−","×"]; }
+      }
+      ans=evalPrec(n,o);
+    }while((ans<0||!Number.isInteger(ans)||ans>200)&&g<40);
+    var t=String(n[0]); for(var i=0;i<o.length;i++) t+=" "+o[i]+" "+n[i+1];
+    math.answer=ans; math.buf=""; math.tShown=elapsed; math.hint=buildHint(n,o);
+    elProb.textContent=t; renderAns(); renderMathHint();
+  }
+  function buildHint(n,o){
+    if(o.length===1) return "Calcule directement : "+n[0]+" "+o[0]+" "+n[1]+".";
+    var pi=(o[0]==="×"||o[0]==="÷")?0:1;
+    if(pi===0){
+      var x=o[0]==="×"?n[0]*n[1]:n[0]/n[1];
+      return "Priorité : "+n[0]+" "+o[0]+" "+n[1]+" = "+x+" → puis "+x+" "+o[1]+" "+n[2]+".";
+    }
+    var x2=o[1]==="×"?n[1]*n[2]:n[1]/n[2];
+    return "Priorité : "+n[1]+" "+o[1]+" "+n[2]+" = "+x2+" → puis "+n[0]+" "+o[0]+" "+x2+".";
+  }
+  function renderMathHint(){
+    var on = runMode==="free" && cfg.assist.math && act.math;
+    elMhint.hidden=!on;
+    if(on) elMhint.textContent=math.hint||"";
+  }
+  function renderAns(cls){
+    elAns.className="answer"+(cls?" "+cls:"");
+    elAns.textContent=math.buf;
+    if(!cls){ var c=document.createElement("span"); c.className="caret"; elAns.appendChild(c); }
+  }
+  function resolveMath(ok,byTimeout){
+    if(math.locked) return;
+    math.locked=true; math.attempts++;
+    var hh=elapsed<curDur/2?0:1;
+    if(ok){ math.correct++; math.streak++; if(math.streak>math.best) math.best=math.streak; mNetH[hh]+=1; }
+    else { math.streak=0; if(byTimeout){ math.timeouts++; mNetH[hh]-=0.7; } else { math.wrongAns++; mNetH[hh]-=0.4; } }
+    renderAns(ok?"ok":"no");
+    mTag.textContent=math.correct+" ✓ / "+(math.wrongAns+math.timeouts)+" ✗";
+    sMath.textContent=math.correct;
+    setTimeout(function(){ math.locked=false; newProblem(); },360);
+  }
+  function checkMath(){
+    if(math.locked) return;
+    var want=String(math.answer);
+    if(math.buf===want) resolveMath(true);
+    else if(math.buf.length>=want.length) resolveMath(false,false);
+  }
+
+  // ---------- reaction ----------
+  function scheduleReact(){ react.idx=-1; react.next=elapsed+cfg.react.rate*(0.55+Math.random()*0.9); fkeys.forEach(function(k){k.classList.remove("live","hit");}); }
+  function fireReact(){
+    react.idx=ri(0,3); react.tStim=elapsed; fkeys[react.idx].classList.add("live");
+    if(runMode==="free" && cfg.assist.audio) speakF(react.idx);
+  }
+  function speakF(i){
+    try{
+      if(!window.speechSynthesis) return;
+      var u=new SpeechSynthesisUtterance("F"+(i+1));
+      u.lang="fr-FR"; u.rate=1.15; u.volume=1;
+      speechSynthesis.speak(u);   // pas de cancel() : ça se met en file avec les nombres au lieu de les couper
+    }catch(e){}
+  }
+
+  // ---------- mémoire auditive (nombres) ----------
+  // Cycle fixe : 3 s affiché/lu, puis 3 s vide, puis le nombre suivant (= cfg.nums.rate secondes par demi-cycle).
+  // En examen, mode forcé "visual" (pas de synthèse vocale à l'écrit officiel).
+  function scheduleNums(){ nums.next=elapsed+cfg.nums.rate*2; }
+  function speak(text){
+    try{ if(!window.speechSynthesis) return; var u=new SpeechSynthesisUtterance(text); u.lang="fr-FR"; u.rate=1; u.volume=1; speechSynthesis.speak(u); }catch(e){}
+  }
+  function numsShow(n){
+    numsFlash.dataset.pos = cfg.nums.pos;
+    numsFlash.textContent=String(n);
+    numsFlash.hidden=false;
+    void numsFlash.offsetWidth;
+    numsFlash.classList.add("show");
+  }
+  function numsHide(){
+    numsFlash.classList.remove("show");
+    setTimeout(function(){ if(!numsFlash.classList.contains("show")) numsFlash.hidden=true; },160);
+  }
+  function fireNum(){
+    var n=ri(1,9);
+    nums.sum+=n; nums.count++;
+    var mode = runMode==="exam" ? "visual" : cfg.nums.mode;
+    if(mode==="voice" || mode==="both"){
+      speak(String(n));
+      if(runMode==="free" && cfg.assist.nums){
+        setTimeout(function(){ if(running && act.nums) speak(String(n)); },2000);
+      }
+    }
+    if(mode==="visual" || mode==="both"){
+      numsShow(n);
+      setTimeout(function(){ if(running) numsHide(); },cfg.nums.rate*1000);
+    }
+    numsTag.textContent=nums.count+" vu"+(nums.count>1?"s":"");
+    sNums.textContent=nums.count;
+    numsIcon.classList.remove("ping"); void numsIcon.offsetWidth; numsIcon.classList.add("ping");
+    scheduleNums();
+  }
+  function hitReact(i){
+    if(!running||!act.react) return;
+    var hh=elapsed<curDur/2?0:1;
+    if(react.idx===-1){ react.falarm++; rEvtH[hh]++; updReactTags(); return; }
+    if(i===react.idx){
+      var t=elapsed-react.tStim;
+      react.hits++; react.rtSum+=t; react.rts.push(t); rHitH[hh]++; rEvtH[hh]++;
+      fkeys[i].classList.remove("live"); fkeys[i].classList.add("hit");
+      react.idx=-1; react.next=elapsed+cfg.react.rate*(0.5+Math.random()*0.8);
+      setTimeout(function(){ fkeys[i].classList.remove("hit"); },200);
+    } else { react.wrong++; rEvtH[hh]++; }
+    updReactTags();
+  }
+  function updReactTags(){
+    var tot=react.hits+react.miss+react.wrong+react.falarm;
+    rTag.textContent=react.hits+" / "+tot;
+    sHit.textContent=react.hits; sMiss.textContent=react.miss;
+    sRt.textContent=react.hits?Math.round(react.rtSum/react.hits*1000)+" ms":"—";
+  }
+  function median(a){ if(!a.length) return 0; var s=a.slice().sort(function(x,y){return x-y;}); var m=Math.floor(s.length/2); return s.length%2?s[m]:(s[m-1]+s[m])/2; }
+
+  // ---------- gamepad ----------
+  function pads(){ return navigator.getGamepads?[].slice.call(navigator.getGamepads()).filter(Boolean):[]; }
+  function padByIndex(ix){ return pads().filter(function(g){return String(g.index)===String(ix);})[0]; }
+  function fillGpSelect(sel,cur){
+    var gs=pads(); sel.innerHTML="";
+    if(!gs.length){ sel.innerHTML="<option value=''>— aucune —</option>"; return; }
+    gs.forEach(function(g){ var o=document.createElement("option"); o.value=g.index; o.textContent="#"+g.index+" "+g.id.slice(0,38); sel.appendChild(o); });
+    sel.value=(cur!==null&&cur!==undefined)?cur:gs[0].index;
+  }
+  function fillAxisSelect(sel,n,cur){ sel.innerHTML=""; for(var i=0;i<n;i++){ var o=document.createElement("option"); o.value=i; o.textContent="axe "+i; sel.appendChild(o);} sel.value=Math.min(cur,Math.max(0,n-1)); }
+  function refreshPadUI(){
+    var g0=pads()[0];
+    fillGpSelect($("#gpSel"),cfg.main.gp); fillGpSelect($("#gpSide"),cfg.side.gp);
+    if(g0){
+      fillAxisSelect($("#axX"),g0.axes.length,cfg.main.axX);
+      fillAxisSelect($("#axY"),g0.axes.length,cfg.main.axY);
+      fillAxisSelect($("#axSide"),g0.axes.length,cfg.side.axis);
+      if($("#gpSel").value!=="") cfg.main.gp=+$("#gpSel").value;
+      if($("#gpSide").value!=="") cfg.side.gp=+$("#gpSide").value;
+    }
+    $("#invX").checked=cfg.main.invX; $("#invY").checked=cfg.main.invY; $("#axSideInv").checked=cfg.side.inv;
+  }
+  function axVal(gpi,axi,inv){
+    var g=padByIndex(gpi); if(!g) return 0;
+    var v=g.axes[axi]; if(v===undefined||v===null) return 0;
+    if(inv) v=-v; if(v>1)v=1; else if(v<-1)v=-1;
+    var dz=0.04; if(Math.abs(v)<dz) return 0;
+    return (v-(v<0?-dz:dz))/(1-dz);
+  }
+  function renderFmap(){
+    $$(".fslot").forEach(function(el){
+      var m=cfg.fkeys[+el.dataset.f];
+      el.querySelector("b").textContent = m ? ("#"+m.gp+"·"+(m.b!==undefined?("b"+m.b):("ax"+m.ax))) : "—";
+    });
+  }
+  function updatePadPreview(){
+    var wants=pads().length>0 && (cfg.main.control==="pad"||cfg.side.on||runMode==="campaign"||fListen!==null||cfg.fkeys.some(Boolean));
+    $("#padPreviewSec").hidden=!wants; if(!wants) return;
+    var g=padByIndex(cfg.main.gp)||padByIndex(cfg.side.gp)||pads()[0]; if(!g) return;
+    var box=$("#axView");
+    if(box.children.length!==g.axes.length){
+      box.innerHTML="";
+      g.axes.forEach(function(_,i){ var d=document.createElement("div"); d.className="axm";
+        d.innerHTML='<div class="al"><span>axe '+i+'</span><span data-v="'+i+'">0.00</span></div><div class="axtrack"><div class="axfill" data-f="'+i+'"></div></div>'; box.appendChild(d); });
+    }
+    g.axes.forEach(function(v,i){
+      var f=box.querySelector('[data-f="'+i+'"]'),t=box.querySelector('[data-v="'+i+'"]'); if(!f) return;
+      t.textContent=(typeof v==="number"?v.toFixed(2):"—");
+      var pct=Math.min(Math.abs(v),1)*50; f.style.width=pct+"%"; f.style.left=(v>=0?50:50-pct)+"%";
+    });
+    var bb=$("#btnView");
+    if(bb.children.length!==g.buttons.length){ bb.innerHTML=""; g.buttons.forEach(function(_,i){ var d=document.createElement("div"); d.className="blight"; d.textContent=i; bb.appendChild(d);}); }
+    g.buttons.forEach(function(b,i){ bb.children[i].classList.toggle("on",b.pressed||b.value>0.5); });
+  }
+
+  // ---------- input ----------
+  var KEYMAP={ArrowUp:"u",ArrowDown:"d",ArrowLeft:"l",ArrowRight:"r",KeyW:"u",KeyS:"d",KeyA:"l",KeyD:"r",KeyI:"su",KeyK:"sd"};
+  var FMAP={F1:0,F2:1,F3:2,F4:3};
+  window.addEventListener("keydown",function(e){
+    if(e.code in FMAP){ e.preventDefault(); hitReact(FMAP[e.code]); return; }
+    if(e.code in KEYMAP){ if(running) e.preventDefault(); held[KEYMAP[e.code]]=1; return; }
+    if(!running||!act.math||math.locked) return;
+    if(e.key>="0"&&e.key<="9"){
+      if(math.buf===""&&e.key==="0") return;
+      if(math.buf.length<4){ math.buf+=e.key; renderAns(); checkMath(); }
+      return;
+    }
+    if(e.code==="Backspace"){ e.preventDefault(); math.buf=math.buf.slice(0,-1); renderAns(); return; }
+  });
+  window.addEventListener("keyup",function(e){ if(e.code in KEYMAP) held[KEYMAP[e.code]]=0; });
+  fkeys.forEach(function(k){
+    k.addEventListener("click",function(){ hitReact(+k.dataset.i); });
+    k.addEventListener("keydown",function(e){ if(e.code==="Space"||e.code==="Enter"){ e.preventDefault(); hitReact(+k.dataset.i); } });
+  });
+  track.addEventListener("pointermove",function(e){
+    if(!running||cfg.main.control!=="mouse") return;
+    var r=cv.getBoundingClientRect(); reticle.x=e.clientX-r.left; reticle.y=e.clientY-r.top;
+  });
+
+  // ---------- drawing ----------
+  function css(v){ return getComputedStyle(document.documentElement).getPropertyValue(v).trim(); }
+  function withA(c,a){
+    if(c[0]==="#"){ var h=c.slice(1); if(h.length===3) h=h[0]+h[0]+h[1]+h[1]+h[2]+h[2];
+      var n=parseInt(h,16); return "rgba("+((n>>16)&255)+","+((n>>8)&255)+","+(n&255)+","+a+")"; }
+    return c;
+  }
+  function dist(a,b){ var dx=a.x-b.x,dy=a.y-b.y; return Math.sqrt(dx*dx+dy*dy); }
+  function draw(){
+    ctx.clearRect(0,0,W,H); ctx.fillStyle=css("--panel"); ctx.fillRect(0,0,W,H);
+    ctx.strokeStyle=withA(css("--line"),.6); ctx.lineWidth=1;
+    var step=42; ctx.beginPath();
+    for(var x=cx%step;x<W;x+=step){ ctx.moveTo(x,0);ctx.lineTo(x,H); }
+    for(var y=cy%step;y<H;y+=step){ ctx.moveTo(0,y);ctx.lineTo(W,y); }
+    ctx.stroke();
+    if(cfg.main.motion==="loop"){
+      ctx.strokeStyle=withA(css("--accent"),.34); ctx.lineWidth=2; ctx.beginPath();
+      for(var i=0;i<=180;i++){ var p=lem(i/180*Math.PI*2); i?ctx.lineTo(p.x,p.y):ctx.moveTo(p.x,p.y); }
+      ctx.stroke();
+    }
+    var onT=dist(reticle,target)<TOL;
+    ctx.strokeStyle=withA(css("--accent"),.28); ctx.setLineDash([3,4]); ctx.lineWidth=1;
+    ctx.beginPath(); ctx.arc(target.x,target.y,TOL,0,7); ctx.stroke(); ctx.setLineDash([]);
+    var glow=reduce?12:12+5*Math.sin(elapsed*4);
+    var g=ctx.createRadialGradient(target.x,target.y,1,target.x,target.y,glow+10);
+    g.addColorStop(0,withA(css("--accent"),.5)); g.addColorStop(1,withA(css("--accent"),0));
+    ctx.fillStyle=g; ctx.beginPath(); ctx.arc(target.x,target.y,glow+10,0,7); ctx.fill();
+    ctx.fillStyle=css("--accent"); ctx.beginPath(); ctx.arc(target.x,target.y,7,0,7); ctx.fill();
+    ctx.strokeStyle=onT?css("--go"):css("--ink"); ctx.lineWidth=2;
+    ctx.beginPath(); ctx.arc(reticle.x,reticle.y,13,0,7); ctx.stroke();
+    ctx.beginPath();
+    ctx.moveTo(reticle.x-19,reticle.y);ctx.lineTo(reticle.x-6,reticle.y);
+    ctx.moveTo(reticle.x+6,reticle.y);ctx.lineTo(reticle.x+19,reticle.y);
+    ctx.moveTo(reticle.x,reticle.y-19);ctx.lineTo(reticle.x,reticle.y-6);
+    ctx.moveTo(reticle.x,reticle.y+6);ctx.lineTo(reticle.x,reticle.y+19);
+    ctx.stroke();
+    if(onT){ ctx.fillStyle=withA(css("--go"),.16); ctx.beginPath(); ctx.arc(reticle.x,reticle.y,13,0,7); ctx.fill(); }
+  }
+  function drawSide(){
+    if(sideEl.hidden) return;
+    ctxS.clearRect(0,0,SW,SH); ctxS.fillStyle=css("--panel"); ctxS.fillRect(0,0,SW,SH);
+    var onT=Math.abs(sideRet-sideTarget)<TOL_S;
+    var horiz=cfg.side.orient==="h";
+    var pad=34, span=(horiz?SW:SH)-pad*2;
+    function pos(v){ return pad+(v*0.5+0.5)*span; }   // v in [-1,1] -> le long de l'axe choisi
+    ctxS.strokeStyle=withA(css("--line"),.7); ctxS.lineWidth=1;
+    ctxS.beginPath();
+    if(horiz){ var midY=SH/2; ctxS.moveTo(pad,midY); ctxS.lineTo(SW-pad,midY); }
+    else { var midX=SW/2; ctxS.moveTo(midX,pad); ctxS.lineTo(midX,SH-pad); }
+    ctxS.stroke();
+
+    ctxS.fillStyle=withA(css("--accent"),.5); ctxS.beginPath();
+    if(horiz) ctxS.arc(pos(sideTarget),SH/2,6,0,7); else ctxS.arc(SW/2,pos(sideTarget),6,0,7);
+    ctxS.fill();
+
+    ctxS.strokeStyle=withA(css("--accent"),.28); ctxS.setLineDash([3,4]); ctxS.beginPath();
+    if(horiz){
+      var my=SH/2;
+      ctxS.moveTo(pos(sideTarget-TOL_S),my-16); ctxS.lineTo(pos(sideTarget-TOL_S),my+16);
+      ctxS.moveTo(pos(sideTarget+TOL_S),my-16); ctxS.lineTo(pos(sideTarget+TOL_S),my+16);
+    } else {
+      var mx=SW/2;
+      ctxS.moveTo(mx-16,pos(sideTarget-TOL_S)); ctxS.lineTo(mx+16,pos(sideTarget-TOL_S));
+      ctxS.moveTo(mx-16,pos(sideTarget+TOL_S)); ctxS.lineTo(mx+16,pos(sideTarget+TOL_S));
+    }
+    ctxS.stroke(); ctxS.setLineDash([]);
+
+    ctxS.strokeStyle=onT?css("--go"):css("--ink"); ctxS.lineWidth=2.5; ctxS.beginPath();
+    if(horiz){ var ry=SH/2; ctxS.moveTo(pos(sideRet),ry-22); ctxS.lineTo(pos(sideRet),ry+22); }
+    else { var rx=SW/2; ctxS.moveTo(rx-22,pos(sideRet)); ctxS.lineTo(rx+22,pos(sideRet)); }
+    ctxS.stroke();
+  }
+
+  // ---------- loop ----------
+  var loopOn=false;
+  function startLoop(){ if(loopOn) return; loopOn=true; lastNow=performance.now(); raf=requestAnimationFrame(frame); }
+  function stopLoop(){ loopOn=false; cancelAnimationFrame(raf); }
+  function ease(u){ return u<.5?2*u*u:1-Math.pow(-2*u+2,2)/2; }
+  function frame(now){
+    if(!loopOn) return;
+    raf=requestAnimationFrame(frame);
+    var dt=Math.min(0.05,(now-lastNow)/1000||0); lastNow=now;
+
+    // Cible ∞ et cible palonnier figées tant que la séance n'a pas réellement démarré
+    // (menu, décompte 3-2-1) : on les VOIT (fond transparent du décompte) mais elles
+    // n'avancent pas, comme le reste (F1-F4, nombres) — tout part en même temps au "go".
+    if(running){
+      elapsed=(now-tStart)/1000;
+      var tsec=elapsed;
+
+      if(cfg.main.motion==="loop"){
+        var sp=cfg.main.speed;
+        pathT+=(sp+0.15*sp*Math.sin(tsec*0.35))*dt;
+        target=lem(pathT);
+      } else {
+        rndT+=dt;
+        var durScale=0.35/Math.max(0.15,cfg.main.speed);
+        if(rndT>=rndDur){ rndT=0; rndDur=(1.1+Math.random()*2.0)*durScale; rndPrev={x:target.x,y:target.y}; var m=44; rndWay={x:m+Math.random()*(W-2*m),y:m+Math.random()*(H-2*m)}; }
+        var u=ease(Math.min(1,rndT/rndDur));
+        target={x:rndPrev.x+(rndWay.x-rndPrev.x)*u,y:rndPrev.y+(rndWay.y-rndPrev.y)*u};
+      }
+      if(!sideEl.hidden){
+        if(cfg.side.motion==="sine") sideTarget=Math.sin(tsec*cfg.side.speed*Math.PI*2)*0.8;
+        else {
+          sT+=dt; var sS=0.16/Math.max(0.05,cfg.side.speed);
+          if(sT>=sDur){ sT=0; sDur=(0.9+Math.random()*1.7)*sS; sPrev=sideTarget; sWay=Math.random()*1.6-0.8; }
+          sideTarget=sPrev+(sWay-sPrev)*ease(Math.min(1,sT/sDur));
+        }
+      }
+
+      var mainMoved=false;
+      if(cfg.main.control==="key"){
+        var v=330*cfg.main.sens;
+        if(held.l)reticle.x-=v*dt; if(held.r)reticle.x+=v*dt;
+        if(held.u)reticle.y-=v*dt; if(held.d)reticle.y+=v*dt;
+        reticle.x=Math.max(10,Math.min(W-10,reticle.x)); reticle.y=Math.max(10,Math.min(H-10,reticle.y));
+        mainMoved=!!(held.l||held.r||held.u||held.d);
+      } else if(cfg.main.control==="pad"){
+        // pilotage en VITESSE : la déflexion du manche fait avancer le réticule.
+        // La sensibilité règle la vitesse, jamais la portée : on peut toujours atteindre les bords.
+        var vx=axVal(cfg.main.gp,cfg.main.axX,cfg.main.invX), vy=axVal(cfg.main.gp,cfg.main.axY,cfg.main.invY);
+        var sp=560*cfg.main.sens;
+        reticle.x+=vx*sp*dt; reticle.y+=vy*sp*dt;
+        reticle.x=Math.max(10,Math.min(W-10,reticle.x)); reticle.y=Math.max(10,Math.min(H-10,reticle.y));
+        mainMoved=Math.abs(vx)>0.05||Math.abs(vy)>0.05;
+      } else {
+        mainMoved=true; // souris : placement direct, pas besoin d'assistance adaptative
+      }
+      // l'assistance ne compense QUE pendant que tu agis reellement sur la commande :
+      // sans aucune entree elle s'eteint en ~0.45 s, la cible continue donc a s'echapper.
+      mainIdleT = mainMoved ? 0 : mainIdleT+dt;
+      if(runMode==="free" && cfg.assist.track && cfg.main.control!=="mouse"){
+        var mGate=Math.max(0,1-mainIdleT/0.75);
+        if(mGate>0){
+          var aax=target.x-reticle.x, aay=target.y-reticle.y, aad=Math.sqrt(aax*aax+aay*aay), AR=TOL*3.8;
+          if(aad>0 && aad<AR){ var af=Math.min(1,5*dt*(1-aad/AR))*mGate; reticle.x+=aax*af; reticle.y+=aay*af; }
+        }
+      }
+      var d=dist(reticle,target);
+      tk_frames++; if(d<TOL) tk_on++; if(d<2*TOL) tk_near++; tk_errSum+=d; tk_errN++;
+      var half=elapsed<curDur/2?0:1; tk_frH[half]++; if(d<TOL) tk_onH[half]++;
+
+      if(!sideEl.hidden){
+        var sideMoved=false, sv0;
+        if(cfg.side.gp!==null&&cfg.side.gp!==undefined&&padByIndex(cfg.side.gp)){
+          // palonnier aussi en vitesse : appui = déplacement du trait, sensibilité = vitesse, portée toujours complète
+          sv0=axVal(cfg.side.gp,cfg.side.axis,cfg.side.inv);
+          sideRet+=sv0*(2.4*cfg.side.sens)*dt;
+          sideRet=Math.max(-1,Math.min(1,sideRet));
+          sideMoved=Math.abs(sv0)>0.05;
+        }
+        else { var sv=1.4*cfg.side.sens; if(held.su)sideRet-=sv*dt; if(held.sd)sideRet+=sv*dt; sideRet=Math.max(-1,Math.min(1,sideRet)); sideMoved=!!(held.su||held.sd); }
+        // meme logique adaptative que le manche : sans appui reel sur les pedales, l'assistance s'eteint vite
+        sideIdleT = sideMoved ? 0 : sideIdleT+dt;
+        if(runMode==="free" && cfg.assist.side){
+          var sGate=Math.max(0,1-sideIdleT/0.75);
+          if(sGate>0){
+            var sax=sideTarget-sideRet, sad=Math.abs(sax), SAR=TOL_S*3.8;
+            if(sad>0 && sad<SAR){ var sf=Math.min(1,5*dt*(1-sad/SAR))*sGate; sideRet+=sax*sf; sideRet=Math.max(-1,Math.min(1,sideRet)); }
+          }
+        }
+        var sdE=Math.abs(sideRet-sideTarget);
+        sd_frames++; if(sdE<TOL_S) sd_on++; if(sdE<2*TOL_S) sd_near++; sd_errSum+=sdE; sd_errN++;
+        sd_frH[half]++; if(sdE<TOL_S) sd_onH[half]++;
+      }
+
+      if(act.react){
+        for(var fi=0;fi<4;fi++){
+          var m=cfg.fkeys[fi]; if(!m) continue;
+          var gg=padByIndex(m.gp); if(!gg) continue;
+          var actv;
+          if(m.b!==undefined){ var bb=gg.buttons[m.b]; actv=!!bb&&(bb.pressed||bb.value>0.5); }
+          else { var cur=gg.axes[m.ax]===undefined?0:gg.axes[m.ax]; actv=Math.abs(cur-m.v)<0.16&&(m.rest===undefined||Math.abs(cur-m.rest)>0.2); }
+          var fk="f"+fi; if(actv&&!gamePrev[fk]) hitReact(fi); gamePrev[fk]=actv;
+        }
+        if(react.idx===-1&&elapsed>=react.next) fireReact();
+        else if(react.idx!==-1&&elapsed-react.tStim>cfg.react.win){
+          react.miss++; rEvtH[half]++; fkeys[react.idx].classList.remove("live");
+          react.idx=-1; react.next=elapsed+cfg.react.rate*(0.5+Math.random()*0.8); updReactTags();
+        }
+      }
+
+      if(act.nums && elapsed>=nums.next) fireNum();
+
+      if(act.math&&cfg.math.timeout>0){
+        var frac=(elapsed-math.tShown)/cfg.math.timeout;
+        elMbarWrap.hidden=false; elMbar.style.width=Math.max(0,(1-frac)*100)+"%";
+        if(frac>=1&&!math.locked) resolveMath(false,true);
+      } else elMbarWrap.hidden=true;
+
+      if((tk_frames&7)===0){
+        var pct=tk_on/tk_frames*100;
+        elAccBig.textContent=Math.round(pct)+"%";
+        sOn.innerHTML=Math.round(pct)+"<small>%</small>";
+        sErr.innerHTML=Math.round(tk_errSum/tk_errN)+"<small> px</small>";
+        if(!sideEl.hidden&&sd_frames){ var sp2=sd_on/sd_frames*100; elSideBig.textContent=Math.round(sp2)+"%"; sSide.innerHTML=Math.round(sp2)+"<small>%</small>"; }
+      }
+      elLock.classList.toggle("on",d<TOL);
+      var left=Math.max(0,curDur-elapsed);
+      elClock.textContent=fmt(left);
+      if(left<=0) endRun();
+    }
+    draw(); drawSide();
+  }
+  function fmt(s){ s=Math.max(0,Math.ceil(s)); var m=Math.floor(s/60),r=s%60; return (m<10?"0":"")+m+":"+(r<10?"0":"")+r; }
+
+  // ---------- run lifecycle ----------
+  function applyActive(){
+    $("#reactionCard").hidden=!act.react;
+    $("#mathCard").hidden=!act.math;
+    $("#numsCard").hidden=!act.nums;
+    var leftEmpty=!act.react&&!act.math&&!act.nums;
+    var rightEmpty=!act.track&&!act.side;
+    $("#leftCol").hidden=leftEmpty;
+    $("#grid").classList.toggle("solo",leftEmpty||rightEmpty);
+    track.hidden=rightEmpty;
+    $(".main").hidden=!act.track;
+    sideEl.hidden=!act.side; $("#sSideWrap").hidden=!act.side;
+    track.classList.toggle("sideH",cfg.side.orient==="h");
+    track.classList.toggle("mainOff",!act.track&&act.side);
+    $("#stOnW").hidden=!act.track; $("#stErrW").hidden=!act.track;
+    $("#sHitW").hidden=!act.react; $("#sMissW").hidden=!act.react; $("#sRtW").hidden=!act.react;
+    $("#sMathW").hidden=!act.math;
+    $("#sNumsW").hidden=!act.nums;
+  }
+
+  // ---------- décompte de 3 s avant de lancer une séance/étape ----------
+  var countdownEl=$("#countdown"), cdNum=$("#cdNum"), cdLabel=$("#cdLabel"), cdTimer=null;
+  function countdownThen(label,cb){
+    if(cdTimer) clearInterval(cdTimer);
+    briefing.hidden=true; results.hidden=true; stageResult.hidden=true;
+    cdLabel.textContent=label||"";
+    var n=3;
+    function paint(){
+      cdNum.textContent=n;
+      cdNum.classList.remove("pulse"); void cdNum.offsetWidth; cdNum.classList.add("pulse");
+    }
+    countdownEl.hidden=false; paint();
+    cdTimer=setInterval(function(){
+      n--;
+      if(n<=0){ clearInterval(cdTimer); cdTimer=null; countdownEl.hidden=true; cb(); }
+      else paint();
+    },1000);
+  }
+
+  // prepareRun : place tout en position de départ et anime la cible pendant le décompte,
+  // AVANT que la séance ne démarre vraiment (running reste false ici).
+  function prepareRun(durSec){
+    curDur=durSec;
+    applyActive(); fit();                 // géométrie à jour avant de placer la cible et le réticule
+    pathT=0; rndT=999; sT=999;
+    target=lem(0);                        // cible de départ du suivi ∞
+    reticle.x=target.x; reticle.y=target.y;   // le réticule apparaît DÉJÀ sur la cible
+    sideTarget=0;                         // cible de départ du palonnier (centrée)
+    sideRet=0;                            // le trait apparaît DÉJÀ sur la cible
+    fkeys.forEach(function(k){k.classList.remove("live","hit");});
+    rTag.textContent="0 / 0"; mTag.textContent="0 ✓ / 0 ✗"; numsTag.textContent="0 vu";
+    sOn.innerHTML="0<small>%</small>"; sErr.innerHTML="0<small> px</small>"; sSide.innerHTML="0<small>%</small>";
+    sHit.textContent="0"; sMiss.textContent="0"; sRt.textContent="—"; sMath.textContent="0"; sNums.textContent="0";
+    elAccBig.textContent="0%"; elSideBig.textContent="0%";
+    elMhint.hidden=true; elMbarWrap.hidden=true;
+    elProb.textContent="—"; elAns.className="answer"; elAns.textContent="";
+    briefing.hidden=true; results.hidden=true; stageResult.hidden=true; numsPrompt.hidden=true;
+    elClock.textContent=fmt(curDur);
+    startLoop();   // anime déjà la cible (et le palonnier) pendant le décompte : on voit où se préparer
+  }
+  // armRun : bascule réellement en mode "chronométré" — appelé une fois le décompte terminé.
+  function armRun(){
+    running=true; tStart=performance.now(); elapsed=0;
+    tk_frames=tk_on=tk_errSum=tk_errN=tk_near=0; sd_frames=sd_on=sd_errSum=sd_errN=sd_near=0;
+    tk_onH=[0,0]; tk_frH=[0,0]; sd_onH=[0,0]; sd_frH=[0,0]; rHitH=[0,0]; rEvtH=[0,0]; mNetH=[0,0];
+    react={idx:-1,tStim:0,next:cfg.react.rate,hits:0,miss:0,wrong:0,falarm:0,rtSum:0,rts:[]};
+    math={answer:0,buf:"",correct:0,attempts:0,wrongAns:0,timeouts:0,tShown:0,locked:false,streak:0,best:0,hint:""};
+    nums={sum:0,count:0,given:null,next:elapsed+1.5};
+    held={}; gamePrev={}; mainIdleT=0; sideIdleT=0;
+    if(act.math) newProblem();
+    if(act.react) scheduleReact();
+    elStop.hidden=false;
+  }
+
+  function computeStats(){
+    var trackPct=tk_frames?tk_on/tk_frames*100:0, meanErr=tk_errN?tk_errSum/tk_errN:0;
+    var sidePct=sd_frames?sd_on/sd_frames*100:0, sideErr=sd_errN?sd_errSum/sd_errN:0;
+    var rTot=react.hits+react.miss+react.wrong+react.falarm;
+    var reactAcc=rTot?react.hits/rTot:0;
+    var meanRT=react.hits?react.rtSum/react.hits:0, medRT=median(react.rts), bestRT=react.rts.length?Math.min.apply(null,react.rts):0;
+    var rtQ=react.hits?Math.max(0,Math.min(1,1-(meanRT-0.35)/0.65)):0;
+    var sReact=rTot?(0.75*reactAcc+0.25*rtQ):0;
+    var mins=Math.max(0.25,elapsed/60);
+    var netC=Math.max(0,math.correct-0.4*math.wrongAns-0.7*math.timeouts);
+    var perMin=netC/mins;
+    var sMathS=Math.max(0,Math.min(1,perMin/7));
+    var sTrack=Math.max(0,Math.min(1,(trackPct/100)*0.85+(1-Math.min(1,meanErr/140))*0.15));
+    var sSideV=sidePct/100;
+    var sNumsS = nums.given===null ? 0 : Math.max(0,1-Math.abs(nums.given-nums.sum)/6);
+
+    var wt={A:5,B:3,C:2.5,D:2,E:2}, tot=(act.track?wt.A:0) + (act.side?wt.B:0) + (act.react?wt.C:0) + (act.math?wt.D:0) + (act.nums?wt.E:0);
+    var P=((act.track?wt.A*sTrack:0) + (act.side?wt.B*sSideV:0) + (act.react?wt.C*sReact:0) + (act.math?wt.D*sMathS:0) + (act.nums?wt.E*sNumsS:0))/tot; // performance brute 0..1
+    var h0=tk_frH[0]?tk_onH[0]/tk_frH[0]*100:0, h1=tk_frH[1]?tk_onH[1]/tk_frH[1]*100:0;
+
+    // --- progression intra-séance (1re moitié -> 2e moitié) ---
+    var dArr=[];
+    if(act.track) dArr.push(h1-h0);
+    if(act.side){ var s0=sd_frH[0]?sd_onH[0]/sd_frH[0]*100:0,s1=sd_frH[1]?sd_onH[1]/sd_frH[1]*100:0; dArr.push(s1-s0); }
+    if(act.react){ var a0=rEvtH[0]?rHitH[0]/rEvtH[0]*100:0,a1=rEvtH[1]?rHitH[1]/rEvtH[1]*100:0; dArr.push(a1-a0); }
+    if(act.math){ var hm=Math.max(0.1,(curDur/2)/60), m0=Math.max(0,mNetH[0])/hm, m1=Math.max(0,mNetH[1])/hm; dArr.push((m1-m0)/7*100); }
+    var meanDelta=dArr.length?dArr.reduce(function(a,b){return a+b;},0)/dArr.length:0;
+
+    // --- engagement / effort (0..1) ---
+    var eArr=[];
+    if(act.track) eArr.push(tk_frames?tk_near/tk_frames:0);
+    if(act.side) eArr.push(sd_frames?sd_near/sd_frames:0);
+    if(act.react){ var den=react.hits+react.miss+react.wrong; eArr.push(den?(react.hits+react.wrong)/den:0); }
+    if(act.math){ var apm=math.attempts/mins; eArr.push(Math.min(1,apm/6)); }
+    if(act.nums) eArr.push(nums.given===null?0:1);
+    var E=eArr.reduce(function(a,b){return a+b;},0)/eArr.length;
+
+    // La note est fondée sur la performance ; progression et engagement sont des
+    // MULTIPLICATEURS autour de 1 -> ne rien faire ne rapporte aucun point "gratuit".
+    var progMult = 1 + Math.max(-0.25, Math.min(0.25, meanDelta/60));   // +15 pts => ×1,25 ; 0 => ×1 ; -15 => ×0,75
+    var effMult  = 0.85 + 0.25*E;                                       // passif ×0,85 -> pleinement engagé ×1,10
+
+    // --- assistances actives (mode libre uniquement) ---
+    var assisted = runMode==="free" && (cfg.assist.track||cfg.assist.side||cfg.assist.audio||cfg.assist.math||cfg.assist.nums);
+
+    // --- bonus de progression inter-séances (depuis l'historique) ; jamais avec assistance, ca fausserait la tendance ---
+    var sig=(act.track?"A":"")+(act.side?"B":"")+(act.react?"C":"")+(act.math?"D":"")+(act.nums?"E":"")+(assisted?"+A":"");
+    var bonus=0;
+    if(!assisted) try{
+      var hh=loadStore(LS_HIST)||[];
+      var prev=hh.filter(function(r){return r.sig===sig && typeof r.perf==="number";}).slice(-5);
+      if(prev.length>=2){
+        var avgP=prev.reduce(function(a,b){return a+b.perf;},0)/prev.length;
+        if(P>avgP) bonus=Math.min(1.5,(P-avgP)*12);
+      }
+    }catch(e){}
+
+    var tooShort = elapsed < Math.max(6, Math.min(8, curDur*0.25));
+    var noteRaw = P*progMult*effMult*20 + bonus;
+    var note = tooShort ? 0 : Math.max(0,Math.min(20, Math.round(noteRaw*10)/10));
+    var mention = tooShort ? "Séance trop courte"
+      : note>=16?"Excellent":note>=13?"Bon":note>=10?"Moyen":note>=6?"Insuffisant":"Éliminatoire";
+    return {trackPct:trackPct,meanErr:meanErr,sidePct:sidePct,sideErr:sideErr,
+      rTot:rTot,reactAcc:reactAcc,meanRT:meanRT,medRT:medRT,bestRT:bestRT,
+      perMin:perMin,netC:netC,
+      sTrack:sTrack,sSideV:sSideV,sReact:sReact,sMathS:sMathS,sNumsS:sNumsS,
+      P:P,perf:P,E:E,bonus:bonus,sig:sig,delta:Math.round(meanDelta),assisted:assisted,
+      progMult:progMult,effMult:effMult,tooShort:tooShort,
+      note:note,mention:mention,prog:Math.round(h1-h0)};
+  }
+  function statRows(S){
+    var rows=[];
+    if(act.track) rows.push(["Suivi ∞",
+      Math.round(S.trackPct)+" % du temps sur cible<span class='d'>erreur moyenne "+Math.round(S.meanErr)+" px · début "+Math.round(tk_frH[0]?tk_onH[0]/tk_frH[0]*100:0)+" % → fin "+Math.round(tk_frH[1]?tk_onH[1]/tk_frH[1]*100:0)+" %</span>",
+      Math.round(S.sTrack*100)]);
+    if(act.side) rows.push(["Palonnier",
+      Math.round(S.sidePct)+" % du temps sur cible<span class='d'>écart moyen "+Math.round(S.sideErr/2*100)+" % de la plage</span>",
+      Math.round(S.sSideV*100)]);
+    if(act.react) rows.push(["Réaction F1–F4",
+      react.hits+" bons · "+react.miss+" ratés · "+react.wrong+" misclics · "+react.falarm+" anticip.<span class='d'>TR moyen "+(S.meanRT?Math.round(S.meanRT*1000):"—")+" ms · médian "+(S.medRT?Math.round(S.medRT*1000):"—")+" ms · meilleur "+(S.bestRT?Math.round(S.bestRT*1000):"—")+" ms</span>",
+      Math.round(S.sReact*100)]);
+    if(act.math) rows.push(["Calcul mental",
+      math.correct+" justes · "+math.wrongAns+" faux · "+math.timeouts+" délais<span class='d'>"+S.perMin.toFixed(1)+" bonnes/min · meilleure série "+math.best+"</span>",
+      Math.round(S.sMathS*100)]);
+    if(act.nums) rows.push(["Mémoire (nombres)",
+      nums.count+" nombre(s)<span class='d'>somme réelle "+nums.sum+" · ta réponse "+(nums.given===null?"— (pas de réponse)":nums.given)+"</span>",
+      Math.round(S.sNumsS*100)]);
+    return rows;
+  }
+  function fillTable(tbodyEl,rows){
+    tbodyEl.innerHTML="";
+    rows.forEach(function(r){
+      var tr=document.createElement("tr");
+      tr.innerHTML="<td>"+r[0]+"</td><td>"+r[1]+"</td><td>"+r[2]+" %<div class='rbar'><i style='width:"+Math.min(100,r[2])+"%'></i></div></td>";
+      tbodyEl.appendChild(tr);
+    });
+  }
+
+  function endRun(){
+    running=false; stopLoop(); elStop.hidden=true; elMbarWrap.hidden=true;
+    numsFlash.classList.remove("show"); numsFlash.hidden=true;
+    if(act.nums){
+      $("#numsInputEl").value="";
+      numsPrompt.hidden=false;
+      numsPendingContinue=finishEndRun;
+      setTimeout(function(){ $("#numsInputEl").focus(); },50);
+    } else finishEndRun();
+  }
+  $("#numsSubmit").addEventListener("click",submitNumsAnswer);
+  $("#numsInputEl").addEventListener("keydown",function(e){ if(e.code==="Enter") submitNumsAnswer(); });
+  function submitNumsAnswer(){
+    var v=parseInt($("#numsInputEl").value,10);
+    nums.given=isNaN(v)?null:v;
+    numsPrompt.hidden=true;
+    var cont=numsPendingContinue; numsPendingContinue=null;
+    if(cont) cont();
+  }
+  function finishEndRun(){
+    var S=computeStats();
+    var tasksList=(act.track?["Suivi"]:[]).concat(act.side?["Palonnier"]:[],act.react?["Réaction"]:[],act.math?["Calcul"]:[],act.nums?["Nombres"]:[]);
+
+    if(camp.active){
+      camp.scores[camp.stage]={name:CAMPAIGN[camp.stage].name,note:S.note};
+      pushHistory({t:Date.now(),mode:"campagne · "+(camp.stage+1)+"/"+CAMPAIGN.length+(camp.isRetry?" · reprise":""),label:CAMPAIGN[camp.stage].name,dur:curDur,note:S.note,perf:S.perf,sig:S.sig,assisted:S.assisted});
+      camp.isRetry=false;
+      $("#stageTitle").textContent="Étape "+(camp.stage+1)+" / "+CAMPAIGN.length+" — "+CAMPAIGN[camp.stage].name;
+      $("#stageSub").textContent=curDur+" s · "+tasksList.join(" + ")+" · note intelligente";
+      $("#stageNote").textContent=String(S.note).replace(".",",");
+      $("#stageMention").textContent=S.mention;
+      $("#stageAssistWarn").hidden=!S.assisted;
+      if(S.assisted) $("#stageAssistWarn").textContent="⚠ Assistance activée pendant cette étape — ce résultat n'est pas représentatif de ton niveau réel. La note n'est pas modifiée, elle reste juste indicative.";
+      fillTable($("#stageBody"),statRows(S).concat([smartRow(S)]));
+      $("#stageNext").textContent = (camp.stage>=CAMPAIGN.length-1) ? "Voir le bilan de campagne" : "Étape suivante";
+      stageResult.hidden=false;
+    } else {
+      pushHistory({t:Date.now(),mode:runMode==="exam"?"examen":"libre",label:tasksList.join(" + "),dur:curDur,note:S.note,perf:S.perf,sig:S.sig,assisted:S.assisted});
+      showFreeResults(S,tasksList);
+    }
+  }
+  function smartRow(S){
+    if(S.tooShort) return ["Note intelligente","séance trop courte pour être notée<span class='d'>joue au moins quelques secondes</span>",0];
+    var b = S.bonus>0 ? " + "+S.bonus.toFixed(1).replace(".",",")+" bonus progrès" : "";
+    return ["Note intelligente",
+      "performance × progression × engagement"+b
+        +"<span class='d'>performance "+ (S.P*20).toFixed(1).replace(".",",") +"/20 · progression "+(S.delta>=0?"+":"")+S.delta+" pts (×"+S.progMult.toFixed(2).replace(".",",")+") · engagement "+Math.round(S.E*100)+" % (×"+S.effMult.toFixed(2).replace(".",",")+")</span>",
+      Math.round(S.note/20*100)];
+  }
+  function showFreeResults(S,tasksList){
+    $("#resTitle").textContent = runMode==="exam" ? "Bilan d'examen" : "Bilan de séance";
+    $("#resSub").textContent=curDur+" s · "+({key:"clavier",mouse:"souris",pad:"manette"}[cfg.main.control])+" · ∞ "+(cfg.main.motion==="loop"?"boucle":"aléatoire")+" "+(cfg.main.orient==="v"?"vertical":"horizontal")+" · "+tasksList.join(" + ")+(S.assisted?" · assistée":"");
+    $("#resIndex").textContent=String(S.note).replace(".",",");
+    $("#resMention").textContent=S.mention;
+    $("#resAssistWarn").hidden=!S.assisted;
+    if(S.assisted) $("#resAssistWarn").textContent="⚠ Assistance activée pendant la séance — ce résultat n'est pas représentatif de ton niveau réel. La note n'est pas modifiée, elle reste juste indicative.";
+    var pline;
+    if(S.tooShort){
+      pline="Séance trop courte pour être notée — joue au moins quelques secondes.";
+    } else {
+      pline="Note = performance "+(S.P*20).toFixed(1).replace(".",",")+"/20 × progression (Δ "+(S.delta>=0?"+":"")+S.delta+" pts → ×"+S.progMult.toFixed(2).replace(".",",")+") × engagement ("+Math.round(S.E*100)+" % → ×"+S.effMult.toFixed(2).replace(".",",")+")";
+      if(S.bonus>0) pline+=" + "+S.bonus.toFixed(1).replace(".",",")+" pt de progrès inter-séances";
+      pline+=(S.delta>=5?" — tu montes en régime, ce que le SECPIL valorise.":S.delta<=-5?" — tu décroches en fin de séance (fatigue / surcharge).":".");
+    }
+    $("#resProg").textContent=pline;
+    $("#resSpark").hidden=true;
+    fillTable($("#resBody"),statRows(S).concat([smartRow(S)]));
+    var wt="<b>Note intelligente</b> = <b>performance</b> × <b>progression</b> × <b>engagement</b>. La performance est la base ; progression et engagement sont des multiplicateurs autour de 1 — <b>ne rien faire ne rapporte aucun point</b>. "
+      +"Progression : compare 1re et 2e moitié de séance sur toutes les tâches → de ×0,75 (tu décroches) à ×1,25 (tu montes en régime). Engagement : densité d'actions et absence de passivité → de ×0,85 à ×1,10. + jusqu'à 1,5 pt si tu bats ta moyenne récente sur la même combinaison. Une séance de moins de ~8 s n'est pas notée. "
+      +"<br>Performance = suivi ∞ 5 · palonnier 3 · réaction 2,5 · calcul 2 · mémoire (nombres) 2 (pondérés sur les tâches actives) ; réaction = 75 % précision + 25 % rapidité ; calcul = débit de bonnes réponses (faux −0,4 · délai −0,7 · ~7 bonnes/min = maxi) ; mémoire (nombres) = proximité entre ta somme et la somme réelle. "
+      +"Barème calé sur l'historique (SECPIL noté /10, éliminatoire &lt; 3/10 ≈ 6/20) ; le barème officiel actuel n'est pas public.";
+    $("#resWeights").innerHTML=wt;
+    results.hidden=false; briefing.hidden=true; stageResult.hidden=true;
+  }
+  function showCampaignSummary(){
+    var notes=camp.scores.map(function(s){return s.note;});
+    var avg=notes.length?notes.reduce(function(a,b){return a+b;},0)/notes.length:0;
+    var best=camp.scores.reduce(function(a,b){return b.note>a.note?b:a;},camp.scores[0]||{note:0,name:"—"});
+    var worst=camp.scores.reduce(function(a,b){return b.note<a.note?b:a;},camp.scores[0]||{note:0,name:"—"});
+    $("#resTitle").textContent="Bilan de campagne";
+    $("#resSub").textContent=camp.scores.length+" étapes · "+cfg.stageDur+" s chacune";
+    $("#resIndex").textContent=String(Math.round(avg*10)/10).replace(".",",");
+    $("#resMention").textContent="moyenne des étapes";
+    $("#resAssistWarn").hidden=true;
+    $("#resProg").textContent="Meilleure étape : "+best.name+" ("+String(best.note).replace(".",",")+") · plus difficile : "+worst.name+" ("+String(worst.note).replace(".",",")+")";
+    drawSpark($("#resSpark"),notes); $("#resSpark").hidden=false;
+    var tb=$("#resBody"); tb.innerHTML="";
+    camp.scores.forEach(function(s,i){
+      var tr=document.createElement("tr");
+      var m=s.note>=16?"Excellent":s.note>=13?"Bon":s.note>=10?"Moyen":s.note>=6?"Insuffisant":"Éliminatoire";
+      tr.innerHTML="<td>Étape "+(i+1)+"</td><td>"+s.name+"<span class='d'>"+m+"</span></td><td>"+String(s.note).replace(".",",")+" / 20<div class='rbar'><i style='width:"+Math.min(100,s.note/20*100)+"%'></i></div></td>";
+      tb.appendChild(tr);
+    });
+    $("#resWeights").innerHTML="Notes intelligentes (60 % perf + 25 % progression + 15 % engagement). La campagne monte en charge : suivi seul → +1 tâche → on permute → … → tout ensemble. Regarde où ta note chute : c'est la combinaison qui te sature. Chaque étape est aussi enregistrée dans l'historique.";
+    camp.active=false; elStagePill.hidden=true;
+    results.hidden=false; stageResult.hidden=true; briefing.hidden=true;
+  }
+
+  // ---------- campaign ----------
+  function tasksToActive(tasks){
+    return { track:true, side:tasks.indexOf("B")>=0, react:tasks.indexOf("C")>=0, math:tasks.indexOf("D")>=0, nums:tasks.indexOf("E")>=0 };
+  }
+  function startCampaign(){
+    readControlsFromUI(); lockExamSettings(); saveStore(LS_LAST,cfg);
+    camp={active:true,stage:0,scores:[],isRetry:false};
+  }
+  function runStage(retryLabelSuffix){
+    act=tasksToActive(CAMPAIGN[camp.stage].tasks);
+    elStagePill.hidden=false;
+    elStagePill.textContent="Campagne "+(camp.stage+1)+"/"+CAMPAIGN.length+" · "+CAMPAIGN[camp.stage].name;
+    prepareRun(cfg.stageDur);
+    countdownThen(CAMPAIGN[camp.stage].name+(retryLabelSuffix?" · reprise":""),armRun);
+  }
+  $("#stageRetry").addEventListener("click",function(){
+    camp.isRetry=true;
+    runStage(true);
+  });
+  $("#stageNext").addEventListener("click",function(){
+    camp.stage++;
+    if(camp.stage>=CAMPAIGN.length) showCampaignSummary();
+    else runStage(false);
+  });
+  $("#stageQuit").addEventListener("click",function(){
+    if(camp.scores.length) showCampaignSummary();
+    else { camp.active=false; elStagePill.hidden=true; stageResult.hidden=true; briefing.hidden=false; }
+  });
+
+  // ---------- history ----------
+  function pushHistory(rec){ var h=loadStore(LS_HIST)||[]; h.push(rec); if(h.length>150) h=h.slice(-150); saveStore(LS_HIST,h); }
+  function drawSpark(svg,vals){
+    while(svg.firstChild) svg.removeChild(svg.firstChild);
+    if(vals.length<1) return;
+    var W2=240,H2=44,pl=2,pr=2,pt=4,pb=4;
+    function X(i){ return vals.length<2?W2/2:pl+i/(vals.length-1)*(W2-pl-pr); }
+    function Y(v){ return H2-pb-(Math.max(0,Math.min(20,v))/20)*(H2-pt-pb); }
+    var base=document.createElementNS("http://www.w3.org/2000/svg","line");
+    base.setAttribute("x1",0);base.setAttribute("x2",W2);base.setAttribute("y1",Y(6));base.setAttribute("y2",Y(6));
+    base.setAttribute("stroke",css("--alert"));base.setAttribute("stroke-dasharray","3 3");base.setAttribute("stroke-width","1");base.setAttribute("opacity",".5");
+    svg.appendChild(base);
+    var d=vals.map(function(v,i){ return (i?"L":"M")+X(i).toFixed(1)+" "+Y(v).toFixed(1); }).join(" ");
+    var p=document.createElementNS("http://www.w3.org/2000/svg","path");
+    p.setAttribute("d",d);p.setAttribute("fill","none");p.setAttribute("stroke",css("--accent"));p.setAttribute("stroke-width","2");
+    p.setAttribute("stroke-linejoin","round");p.setAttribute("stroke-linecap","round");
+    svg.appendChild(p);
+    vals.forEach(function(v,i){
+      var c=document.createElementNS("http://www.w3.org/2000/svg","circle");
+      c.setAttribute("cx",X(i).toFixed(1));c.setAttribute("cy",Y(v).toFixed(1));c.setAttribute("r","2.2");
+      c.setAttribute("fill",i===vals.length-1?css("--accent"):css("--panel"));c.setAttribute("stroke",css("--accent"));c.setAttribute("stroke-width","1.2");
+      svg.appendChild(c);
+    });
+  }
+  function renderHistory(){
+    var h=loadStore(LS_HIST)||[];
+    $("#histSec").hidden = h.length===0;
+    if(!h.length) return;
+    drawSpark($("#histSpark"), h.slice(-40).map(function(r){return r.note;}));
+    var list=$("#histList"); list.innerHTML="";
+    h.slice(-14).reverse().forEach(function(r){
+      var dt=new Date(r.t);
+      var dd=(dt.getDate()<10?"0":"")+dt.getDate()+"/"+(dt.getMonth()+1<10?"0":"")+(dt.getMonth()+1)+" "+(dt.getHours()<10?"0":"")+dt.getHours()+":"+(dt.getMinutes()<10?"0":"")+dt.getMinutes();
+      var col=r.note>=13?"var(--go)":r.note>=6?"var(--ink)":"var(--alert)";
+      var row=document.createElement("div"); row.className="hrow";
+      row.innerHTML="<span class='hdate'>"+dd+"</span><span class='hlabel'>"+r.label+" <span style='color:var(--ink-dim)'>· "+r.mode+" · "+r.dur+"s"+(r.assisted?" · assistée":"")+"</span></span><span class='hnote' style='color:"+col+"'>"+String(r.note).replace(".",",")+"/20</span>";
+      list.appendChild(row);
+    });
+  }
+  $("#histClear").addEventListener("click",function(){ saveStore(LS_HIST,[]); renderHistory(); });
+
+  // ---------- briefing wiring ----------
+  function seg(sel,fn){
+    var s=$(sel);
+    s.addEventListener("click",function(e){
+      var b=e.target.closest("button"); if(!b) return;
+      [].forEach.call(s.children,function(x){ x.setAttribute("aria-pressed",x===b?"true":"false"); });
+      fn(b.dataset); updatePadPreview();
+    });
+  }
+  var ASSIST_ROWS=["#assistTrackRow","#assistSideRow","#assistAudioRow","#assistMathRow","#assistNumsRow"];
+  seg("#modeSeg",function(d){
+    runMode=d.x;
+    var isCamp=runMode==="campaign", isExam=runMode==="exam", isFree=runMode==="free";
+    var locked=isExam||isCamp; // règles du jeu figées en examen/campagne ; sensibilité, axes et assignation HOTAS restent réglables
+    $("#freeDurRow").hidden=!isFree; $("#freeTaskRow").hidden=!isFree;
+    $("#campDurRow").hidden=!isCamp; $("#campNote").hidden=!isCamp;
+    $("#examSec").hidden=!isExam;
+    // Suivi ∞ : orientation / vitesse / mouvement figés — contrôle, sensibilité, manche restent réglables
+    $("#orientRow").hidden=locked; $("#spdRow").hidden=locked; $("#motRow").hidden=locked;
+    // Palonnier : idem
+    $("#sideOrientRow").hidden=locked; $("#sideSpdRow").hidden=locked; $("#sideMotRow").hidden=locked;
+    // Réaction : cadence / délai figés — l'assignation HOTAS F1-F4 reste indispensable et reste visible
+    $("#reactRateRow").hidden=locked; $("#reactWinRow").hidden=locked;
+    // Calcul mental et mémoire (nombres) : aucun réglage matériel, tout est figé
+    $("#mathSegRow").hidden=locked;
+    $("#numsModeRow").hidden=locked;
+    $("#numsPosRow").hidden=locked||(cfg.nums.mode==="voice");
+    $("#numsSpdRow").hidden=locked;
+    $("#startBtn").textContent=isCamp?"Démarrer la campagne":isExam?"Démarrer l'examen":"Démarrer la séance";
+    ASSIST_ROWS.forEach(function(sel){ $(sel).hidden=!isFree; });
+    renderMathHint();
+  });
+  seg("#durSeg",function(d){ cfg.duration=+d.d; });
+  seg("#stageDurSeg",function(d){ cfg.stageDur=+d.d; });
+  seg("#orientSeg",function(d){ cfg.main.orient=d.o; });
+  seg("#spdSeg",function(d){ cfg.main.speed=+d.s; });
+  seg("#motSeg",function(d){ cfg.main.motion=d.m; });
+  seg("#sensSeg",function(d){ cfg.main.sens=+d.s; });
+  seg("#ctrlSeg",function(d){ cfg.main.control=d.c; $("#padRow").hidden=d.c!=="pad"; if(d.c==="pad") refreshPadUI(); });
+  seg("#sideSpdSeg",function(d){ cfg.side.speed=+d.s; });
+  seg("#sideSensSeg",function(d){ cfg.side.sens=+d.s; });
+  seg("#sideMotSeg",function(d){ cfg.side.motion=d.m; });
+  seg("#sideOrientSeg",function(d){ cfg.side.orient=d.o; });
+  seg("#rateSeg",function(d){ cfg.react.rate=+d.r; });
+  seg("#winSeg",function(d){ cfg.react.win=+d.w; });
+  seg("#mathSeg",function(d){ cfg.math.timeout=+d.t; });
+  seg("#numsModeSeg",function(d){ cfg.nums.mode=d.m; $("#numsPosRow").hidden=(d.m==="voice"); });
+  seg("#numsPosSeg",function(d){ cfg.nums.pos=d.p; });
+  seg("#numsSpdSeg",function(d){ cfg.nums.rate=+d.r; });
+
+  function countActiveTasks(){ return (cfg.main.on?1:0)+(cfg.side.on?1:0)+(cfg.react.on?1:0)+(cfg.math.on?1:0)+(cfg.nums.on?1:0); }
+  var taskGuardT=null;
+  function flashTaskGuard(){
+    var el=$("#taskGuardMsg");
+    el.classList.add("warn");
+    if(taskGuardT) clearTimeout(taskGuardT);
+    taskGuardT=setTimeout(function(){ el.classList.remove("warn"); },1400);
+  }
+  function tg(id,get,set){
+    var el=$(id);
+    el.addEventListener("click",function(){
+      var cur=get();
+      if(cur && countActiveTasks()<=1){ flashTaskGuard(); return; }
+      set(!cur); el.setAttribute("aria-pressed",get()?"true":"false");
+      if(id==="#tgSide") refreshPadUI();
+      updatePadPreview();
+    });
+  }
+  tg("#tgTrack",function(){return cfg.main.on;},function(v){cfg.main.on=v;});
+  tg("#tgReact",function(){return cfg.react.on;},function(v){cfg.react.on=v;});
+  tg("#tgMath",function(){return cfg.math.on;},function(v){cfg.math.on=v;});
+  tg("#tgSide",function(){return cfg.side.on;},function(v){cfg.side.on=v;});
+  tg("#tgNums",function(){return cfg.nums.on;},function(v){cfg.nums.on=v;});
+
+  function bindAssist(id,get,set,after){
+    var el=$(id);
+    el.addEventListener("click",function(){
+      var v=!get(); set(v);
+      el.setAttribute("aria-pressed",v?"true":"false");
+      el.textContent=v?"Activée":"Désactivée";
+      if(after) after();
+    });
+  }
+  bindAssist("#tgAssistTrack",function(){return cfg.assist.track;},function(v){cfg.assist.track=v;});
+  bindAssist("#tgAssistSide", function(){return cfg.assist.side;}, function(v){cfg.assist.side=v;});
+  bindAssist("#tgAssistAudio",function(){return cfg.assist.audio;},function(v){cfg.assist.audio=v;});
+  bindAssist("#tgAssistMath", function(){return cfg.assist.math;}, function(v){cfg.assist.math=v;}, renderMathHint);
+  bindAssist("#tgAssistNums", function(){return cfg.assist.nums;}, function(v){cfg.assist.nums=v;});
+
+  $("#gpSel").addEventListener("change",function(){ cfg.main.gp=this.value!==""?+this.value:null; });
+  $("#axX").addEventListener("change",function(){ cfg.main.axX=+this.value; });
+  $("#axY").addEventListener("change",function(){ cfg.main.axY=+this.value; });
+  $("#invX").addEventListener("change",function(){ cfg.main.invX=this.checked; });
+  $("#invY").addEventListener("change",function(){ cfg.main.invY=this.checked; });
+  $("#gpSide").addEventListener("change",function(){ cfg.side.gp=this.value!==""?+this.value:null; });
+  $("#axSide").addEventListener("change",function(){ cfg.side.axis=+this.value; });
+  $("#axSideInv").addEventListener("change",function(){ cfg.side.inv=this.checked; });
+  $("#axSideDetect").addEventListener("click",function(){
+    var g=padByIndex(cfg.side.gp)||pads()[0];
+    if(!g){ $("#axSideStatus").textContent="branche une manette"; return; }
+    sideDetect={active:true,rest:[].slice.call(g.axes),gp:g.index};
+    $("#axSideStatus").textContent="bouge les pédales à fond…";
+  });
+  $$(".fslot").forEach(function(el){
+    el.addEventListener("click",function(){
+      var g=pads()[0];
+      $$(".fslot").forEach(function(x){ x.classList.remove("listening"); });
+      if(!g){ el.querySelector("b").textContent="pas de manette"; return; }
+      var activeNow=false;
+      for(var i=0;i<g.buttons.length;i++) if(g.buttons[i].pressed||g.buttons[i].value>0.5) activeNow=true;
+      fListen={slot:+el.dataset.f,rest:[].slice.call(g.axes),gp:g.index,armed:!activeNow};
+      el.classList.add("listening"); el.querySelector("b").textContent="…";
+    });
+  });
+
+  function readControlsFromUI(){
+    if(cfg.main.control==="pad"){
+      if($("#gpSel").value!=="") cfg.main.gp=+$("#gpSel").value;
+      if($("#axX").value!=="") cfg.main.axX=+$("#axX").value;
+      if($("#axY").value!=="") cfg.main.axY=+$("#axY").value;
+      cfg.main.invX=$("#invX").checked; cfg.main.invY=$("#invY").checked;
+    }
+    if($("#gpSide").value!=="") cfg.side.gp=+$("#gpSide").value;
+    if($("#axSide").value!=="") cfg.side.axis=+$("#axSide").value;
+    cfg.side.inv=$("#axSideInv").checked;
+  }
+  function applyCfgToUI(){
+    function press(id,val){ [].forEach.call($(id).children,function(b){ var k=Object.keys(b.dataset)[0]; b.setAttribute("aria-pressed",String(b.dataset[k])===String(val)?"true":"false"); }); }
+    press("#durSeg",cfg.duration); press("#stageDurSeg",cfg.stageDur);
+    press("#orientSeg",cfg.main.orient); press("#spdSeg",cfg.main.speed); press("#motSeg",cfg.main.motion); press("#ctrlSeg",cfg.main.control); press("#sensSeg",cfg.main.sens);
+    press("#sideSpdSeg",cfg.side.speed); press("#sideMotSeg",cfg.side.motion); press("#sideSensSeg",cfg.side.sens); press("#sideOrientSeg",cfg.side.orient);
+    press("#rateSeg",cfg.react.rate); press("#winSeg",cfg.react.win); press("#mathSeg",cfg.math.timeout);
+    press("#numsModeSeg",cfg.nums.mode); press("#numsPosSeg",cfg.nums.pos); press("#numsSpdSeg",cfg.nums.rate);
+    $("#numsPosRow").hidden=(cfg.nums.mode==="voice");
+    $("#padRow").hidden=cfg.main.control!=="pad";
+    $("#tgTrack").setAttribute("aria-pressed",cfg.main.on?"true":"false");
+    $("#tgReact").setAttribute("aria-pressed",cfg.react.on?"true":"false");
+    $("#tgMath").setAttribute("aria-pressed",cfg.math.on?"true":"false");
+    $("#tgSide").setAttribute("aria-pressed",cfg.side.on?"true":"false");
+    $("#tgNums").setAttribute("aria-pressed",cfg.nums.on?"true":"false");
+    [["#tgAssistTrack","track"],["#tgAssistSide","side"],["#tgAssistAudio","audio"],["#tgAssistMath","math"],["#tgAssistNums","nums"]].forEach(function(p){
+      var el=$(p[0]), v=cfg.assist[p[1]];
+      el.setAttribute("aria-pressed",v?"true":"false"); el.textContent=v?"Activée":"Désactivée";
+    });
+    refreshPadUI(); renderFmap(); updatePadPreview(); renderMathHint();
+  }
+
+  $("#startBtn").addEventListener("click",function(){
+    readControlsFromUI(); saveStore(LS_LAST,cfg);
+    if(runMode==="campaign"){
+      startCampaign();
+      runStage(false);
+      return;
+    }
+    camp.active=false; elStagePill.hidden=true;
+    if(runMode==="exam"){
+      lockExamSettings();
+      act={track:true,side:true,react:true,math:true,nums:true};
+      prepareRun(1200);                       // 20 min, format réel du SECPIL
+      countdownThen("Examen SECPIL · 20 min",armRun);
+      return;
+    }
+    act={track:cfg.main.on,side:cfg.side.on,react:cfg.react.on,math:cfg.math.on,nums:cfg.nums.on};
+    prepareRun(cfg.duration);
+    countdownThen(null,armRun);
+  });
+  $("#againBtn").addEventListener("click",function(){ results.hidden=true; briefing.hidden=false; renderHistory(); });
+  elStop.addEventListener("click",function(){ if(running) endRun(); });
+  window.addEventListener("gamepadconnected",function(){ refreshPadUI(); updatePadPreview(); });
+  window.addEventListener("gamepaddisconnected",function(){ refreshPadUI(); updatePadPreview(); });
+
+  setInterval(function(){
+    if(briefing.hidden) return;
+    updatePadPreview();
+    if(sideDetect.active){
+      var gd=padByIndex(sideDetect.gp)||pads()[0];
+      if(gd){
+        var best=-1,bd=0.35;
+        gd.axes.forEach(function(v,i){ var dd=Math.abs(v-(sideDetect.rest[i]||0)); if(dd>bd){ bd=dd; best=i; } });
+        if(best>=0){ cfg.side.axis=best; cfg.side.gp=gd.index; var ss=$("#axSide"); if(ss&&ss.options.length>best) ss.value=best; sideDetect.active=false; }
+      }
+    }
+    if(!sideDetect.active){
+      var gp=padByIndex(cfg.side.gp)||pads()[0];
+      if(gp){ var vv=gp.axes[cfg.side.axis]; $("#axSideStatus").textContent="axe "+cfg.side.axis+" = "+(vv===undefined?"—":vv.toFixed(2))+" (doit bouger avec les pédales)"; }
+    }
+    if(fListen){
+      var g=padByIndex(fListen.gp)||pads()[0];
+      if(g){
+        var got=null,anyActive=false;
+        for(var bi=0;bi<g.buttons.length;bi++){ if(g.buttons[bi].pressed||g.buttons[bi].value>0.5){ anyActive=true; if(!got) got={gp:g.index,b:bi}; } }
+        for(var ai=0;ai<g.axes.length;ai++){
+          var r=fListen.rest[ai]||0,cur=g.axes[ai],isHat=Math.abs(r)>1.05,thr=isHat?0.2:0.5;
+          if(Math.abs(cur-r)>thr){ anyActive=true; if(!got) got={gp:g.index,ax:ai,v:Math.round(cur*1000)/1000,rest:Math.round(r*1000)/1000}; }
+        }
+        if(!fListen.armed){ if(!anyActive) fListen.armed=true; }
+        else if(got){ cfg.fkeys[fListen.slot]=got; document.querySelector('.fslot[data-f="'+fListen.slot+'"]').classList.remove("listening"); fListen=null; renderFmap(); }
+      }
+    }
+    $$(".fslot").forEach(function(el){
+      var m=cfg.fkeys[+el.dataset.f]; if(!m||el.classList.contains("listening")){ el.classList.remove("hot"); return; }
+      var g=padByIndex(m.gp); if(!g){ el.classList.remove("hot"); return; }
+      var on;
+      if(m.b!==undefined){ var b=g.buttons[m.b]; on=!!b&&(b.pressed||b.value>0.5); }
+      else { var c=g.axes[m.ax]===undefined?0:g.axes[m.ax]; on=Math.abs(c-m.v)<0.16&&(m.rest===undefined||Math.abs(c-m.rest)>0.2); }
+      el.classList.toggle("hot",!!on);
+    });
+  },70);
+
+  // ---------- go ----------
+  fit(); reticle.x=cx; reticle.y=cy;
+  // pas de boucle d'animation au menu : l'écran est figé sous un fond simple, la boucle démarre au lancement
+  var last=loadStore(LS_LAST); if(last) cfg=deepMerge(DEFAULT,last);
+  applyCfgToUI(); renderHistory();
+  setTheme(loadStore(LS_THEME)||"system");
+})();
+</script>
